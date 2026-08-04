@@ -1,0 +1,219 @@
+.page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  background: #1b5e20;
+  color: #ffffff;
+}
+
+.header h1 {
+  font-size: 22px;
+}
+
+.header p {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.headerNav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.backLink {
+  color: #ffffff;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.backLink:hover {
+  text-decoration: underline;
+}
+
+.linkButton {
+  padding: 10px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: transparent;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.linkButton:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.main {
+  flex: 1;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.cardCentrado {
+  max-width: 420px;
+  margin: 80px auto;
+  padding: 28px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.cardCentrado h1 {
+  margin-bottom: 8px;
+  font-size: 20px;
+  color: #171717;
+}
+
+.cardCentrado p {
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #666;
+}
+
+.section {
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo span {
+  color: #333333;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.select {
+  min-width: 240px;
+  padding: 10px 12px;
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid #f5c6c0;
+  border-radius: 8px;
+  background: #fdecea;
+  color: #b3261e;
+  font-size: 14px;
+}
+
+.cargando {
+  padding: 32px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.vacio {
+  padding: 12px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.boton {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #1b5e20;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.boton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tablaScroll {
+  overflow-x: auto;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla th {
+  padding: 8px;
+  border-bottom: 2px solid #e5e5e5;
+  color: #666;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.mono {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 13px;
+}
+
+.resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tarjeta {
+  flex: 1;
+  min-width: 160px;
+  padding: 14px 16px;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  background: #fafafa;
+}
+
+.tarjeta .valor {
+  font-size: 24px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.tarjeta .etiqueta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #666;
+}

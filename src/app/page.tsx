@@ -68,10 +68,12 @@ export default function HomePage() {
             <h3>Ventas</h3>
             <p>Consulta de ventas de todas las sucursales.</p>
           </div>
-          <div className={styles.card}>
-            <h3>Inventario</h3>
-            <p>Existencias por sucursal y transferencias.</p>
-          </div>
+          <Link href="/inventario" className={styles.cardLink}>
+            <div className={styles.card}>
+              <h3>Inventario</h3>
+              <p>Existencias por sucursal y transferencias.</p>
+            </div>
+          </Link>
           <div className={styles.card}>
             <h3>Caja</h3>
             <p>Cortes de caja y diferencias.</p>
