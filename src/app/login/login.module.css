@@ -1,0 +1,96 @@
+.page {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(180deg, #1b5e20 0%, #0f3d13 100%);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 380px;
+  padding: 40px 32px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.brandIcon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.brand h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.brand p {
+  font-size: 14px;
+  color: #666;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.field input {
+  padding: 12px 14px;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #171717;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: #1b5e20;
+  box-shadow: 0 0 0 3px rgba(27, 94, 32, 0.15);
+}
+
+.error {
+  font-size: 14px;
+  color: #b3261e;
+}
+
+.button {
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #1b5e20;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: #154a18;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
