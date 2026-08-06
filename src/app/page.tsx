@@ -235,6 +235,7 @@ function DashboardAdmin({
                         <th>Folio</th>
                         <th>Sucursal</th>
                         <th>Empleado</th>
+                        <th>Pago</th>
                         <th>Total</th>
                         <th>Fecha</th>
                       </tr>
@@ -245,6 +246,11 @@ function DashboardAdmin({
                           <td className={styles.mono}>{v.folio}</td>
                           <td>{v.sucursal ?? '—'}</td>
                           <td>{v.usuario ?? '—'}</td>
+                          <td>
+                            {v.metodo_pago === 'tarjeta'
+                              ? 'Tarjeta'
+                              : 'Efectivo'}
+                          </td>
                           <td>{formatearDinero(v.total)}</td>
                           <td>
                             {new Date(v.created_at).toLocaleString('es-MX')}

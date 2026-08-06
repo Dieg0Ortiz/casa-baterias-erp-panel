@@ -36,6 +36,7 @@ export interface VentaFeed {
   sucursal: string | null;
   usuario: string | null;
   created_at: string;
+  metodo_pago: string | null;
 }
 
 export interface Dashboard {
@@ -60,6 +61,7 @@ export interface VentaReporte {
   sucursal: string | null;
   usuario: string | null;
   created_at: string;
+  metodo_pago: string | null;
   items: ItemVentaReporte[];
 }
 

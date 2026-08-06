@@ -111,7 +111,7 @@ function Reportes() {
   function descargarCsv() {
     if (!reporte) return;
     const lineas = [
-      'folio,fecha,sucursal,empleado,total,producto,cantidad,precio_unitario',
+      'folio,fecha,sucursal,empleado,metodo_pago,total,producto,cantidad,precio_unitario',
     ];
     for (const venta of reporte.ventas) {
       const base = [
@@ -119,6 +119,7 @@ function Reportes() {
         venta.created_at,
         venta.sucursal ?? '',
         venta.usuario ?? '',
+        venta.metodo_pago ?? 'efectivo',
         venta.total.toFixed(2),
       ];
       if (venta.items.length === 0) {
@@ -279,6 +280,7 @@ function Reportes() {
                       <th>Fecha</th>
                       <th>Sucursal</th>
                       <th>Empleado</th>
+                      <th>Pago</th>
                       <th>Items</th>
                       <th>Total</th>
                     </tr>
@@ -291,6 +293,7 @@ function Reportes() {
                         fecha={venta.created_at}
                         sucursal={venta.sucursal}
                         empleado={venta.usuario}
+                        metodoPago={venta.metodo_pago}
                         total={venta.total}
                         items={venta.items.map((item) => ({
                           producto: item.producto,
@@ -321,6 +324,7 @@ function VentaFila({
   fecha,
   sucursal,
   empleado,
+  metodoPago,
   total,
   items,
 }: {
@@ -328,6 +332,7 @@ function VentaFila({
   fecha: string;
   sucursal: string | null;
   empleado: string | null;
+  metodoPago: string | null;
   total: number;
   items: Array<{ producto: string | null; cantidad: number; precio: number }>;
 }) {
@@ -339,12 +344,13 @@ function VentaFila({
         <td>{new Date(fecha).toLocaleString('es-MX')}</td>
         <td>{sucursal ?? '—'}</td>
         <td>{empleado ?? '—'}</td>
+        <td>{metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}</td>
         <td>{items.length}</td>
         <td className={styles.total}>{formatearDinero(total)}</td>
       </tr>
       {abierta && (
         <tr>
-          <td colSpan={6} className={styles.detalle}>
+          <td colSpan={7} className={styles.detalle}>
             {items.length === 0 ? (
               <span>Sin detalle.</span>
             ) : (
