@@ -8,6 +8,7 @@ import { logout, useSesion } from '@/lib/auth';
 import {
   type Marca,
   type Producto,
+  type Sucursal,
   actualizarMarca,
   actualizarPrecio,
   crearMarca,
@@ -17,8 +18,10 @@ import {
   formatearDinero,
   listarMarcas,
   listarProductos,
+  listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
+import { transferirInventario } from '@/lib/inventario';
 import {
   IconBolt,
   IconDashboard,
@@ -32,6 +35,7 @@ import {
   IconDelete,
   IconClose,
   IconPriceTag,
+  IconTransfer,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
 
@@ -40,6 +44,7 @@ type ModalState =
   | { tipo: 'editarMarca'; marca: Marca }
   | { tipo: 'nuevoProducto' }
   | { tipo: 'precio'; producto: Producto }
+  | { tipo: 'reubicar'; producto: Producto }
   | null;
 
 function mensajeError(e: unknown): string {
@@ -87,6 +92,7 @@ function CatalogoAdmin() {
   const router = useRouter();
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
@@ -97,9 +103,14 @@ function CatalogoAdmin() {
     setCargando(true);
     setError(null);
     try {
-      const [m, p] = await Promise.all([listarMarcas(), listarProductos()]);
+      const [m, p, s] = await Promise.all([
+        listarMarcas(),
+        listarProductos(),
+        listarSucursales(),
+      ]);
       setMarcas(m);
       setProductos(p);
+      setSucursales(s);
     } catch (e) {
       setError(mensajeError(e));
     } finally {
@@ -165,6 +176,10 @@ function CatalogoAdmin() {
       (p.marcas?.nombre ?? '').toLowerCase().includes(f)
     );
   });
+
+  function obtenerNombreSucursal(sucId: string): string {
+    return sucursales.find((s) => s.id === sucId)?.nombre ?? 'Tienda';
+  }
 
   return (
     <div className={styles.layout}>
@@ -319,6 +334,7 @@ function CatalogoAdmin() {
                         <th>Código de Barras</th>
                         <th style={{ textAlign: 'right' }}>Precio</th>
                         <th style={{ textAlign: 'right' }}>Stock Total</th>
+                        <th>Existencias por Tienda</th>
                         <th style={{ textAlign: 'center' }}>Requiere Casco</th>
                         <th style={{ textAlign: 'center' }}>Estado</th>
                         <th style={{ textAlign: 'center' }}>Acciones</th>
@@ -327,69 +343,100 @@ function CatalogoAdmin() {
                     <tbody>
                       {visibles.length === 0 && (
                         <tr>
-                          <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          <td colSpan={9} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                             No se encontraron productos coincidentes.
                           </td>
                         </tr>
                       )}
-                      {visibles.map((producto) => (
-                        <tr
-                          key={producto.id}
-                          className={producto.activo ? undefined : styles.rowInactive}
-                        >
-                          <td>
-                            <strong>{producto.modelo}</strong>
-                            {producto.descripcion && (
-                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                {producto.descripcion}
-                              </div>
-                            )}
-                          </td>
-                          <td>{producto.marcas?.nombre ?? '—'}</td>
-                          <td className="mono" style={{ color: 'var(--text-secondary)' }}>
-                            {producto.codigo_barras}
-                          </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
-                            {formatearDinero(producto.precio)}
-                          </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
-                            {stockTotal(producto)}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {producto.requiere_casco ? 'Sí' : 'No'}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {producto.activo ? (
-                              <span className={styles.badgeActivo}>Activo</span>
-                            ) : (
-                              <span className={styles.badgeBaja}>Baja</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <div className={styles.itemActions} style={{ justifyContent: 'center' }}>
-                              <button
-                                className={styles.btnPriceAction}
-                                onClick={() => setModal({ tipo: 'precio', producto })}
-                                disabled={operando || !producto.activo}
-                                title="Modificar precio de venta"
-                              >
-                                <IconPriceTag style={{ width: '13px', height: '13px' }} />
-                                <span>Precio</span>
-                              </button>
-                              {producto.activo && (
-                                <button
-                                  className={styles.btnDeleteAction}
-                                  onClick={() => void bajarDeCatalogo(producto)}
-                                  disabled={operando}
-                                  title="Dar de baja producto del catálogo"
-                                >
-                                  <IconDelete style={{ width: '15px', height: '15px' }} />
-                                </button>
+                      {visibles.map((producto) => {
+                        const totalExistencias = stockTotal(producto);
+                        const conStock = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
+
+                        return (
+                          <tr
+                            key={producto.id}
+                            className={producto.activo ? undefined : styles.rowInactive}
+                          >
+                            <td>
+                              <strong>{producto.modelo}</strong>
+                              {producto.descripcion && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  {producto.descripcion}
+                                </div>
                               )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td>{producto.marcas?.nombre ?? '—'}</td>
+                            <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                              {producto.codigo_barras}
+                            </td>
+                            <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
+                              {formatearDinero(producto.precio)}
+                            </td>
+                            <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                              {totalExistencias}
+                            </td>
+                            <td>
+                              {conStock.length === 0 ? (
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin existencias</span>
+                              ) : (
+                                <div className={styles.stockBreakdown}>
+                                  {conStock.map((inv) => (
+                                    <span key={inv.sucursal_id} className={styles.stockBadge}>
+                                      <strong>{obtenerNombreSucursal(inv.sucursal_id)}:</strong> {inv.cantidad}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {producto.requiere_casco ? 'Sí' : 'No'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {producto.activo ? (
+                                <span className={styles.badgeActivo}>Activo</span>
+                              ) : (
+                                <span className={styles.badgeBaja}>Baja</span>
+                              )}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div className={styles.itemActions} style={{ justifyContent: 'center' }}>
+                                <button
+                                  className={styles.btnPriceAction}
+                                  onClick={() => setModal({ tipo: 'precio', producto })}
+                                  disabled={operando || !producto.activo}
+                                  title="Modificar precio de venta"
+                                >
+                                  <IconPriceTag style={{ width: '12px', height: '12px' }} />
+                                  <span>Precio</span>
+                                </button>
+
+                                {producto.activo && totalExistencias > 0 && sucursales.length > 1 && (
+                                  <button
+                                    className={styles.btnRelocateAction}
+                                    onClick={() => setModal({ tipo: 'reubicar', producto })}
+                                    disabled={operando}
+                                    title="Corregir o reubicar sucursal de existencia"
+                                  >
+                                    <IconTransfer style={{ width: '12px', height: '12px' }} />
+                                    <span>Reubicar</span>
+                                  </button>
+                                )}
+
+                                {producto.activo && (
+                                  <button
+                                    className={styles.btnDeleteAction}
+                                    onClick={() => void bajarDeCatalogo(producto)}
+                                    disabled={operando}
+                                    title="Dar de baja producto del catálogo"
+                                  >
+                                    <IconDelete style={{ width: '15px', height: '15px' }} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -424,6 +471,7 @@ function CatalogoAdmin() {
       {modal?.tipo === 'nuevoProducto' && (
         <NuevoProductoModal
           marcas={marcas}
+          sucursales={sucursales}
           onCerrar={() => setModal(null)}
           onGuardado={async () => {
             setModal(null);
@@ -435,6 +483,18 @@ function CatalogoAdmin() {
       {modal?.tipo === 'precio' && (
         <PrecioModal
           producto={modal.producto}
+          onCerrar={() => setModal(null)}
+          onGuardado={async () => {
+            setModal(null);
+            await recargar();
+          }}
+        />
+      )}
+
+      {modal?.tipo === 'reubicar' && (
+        <ReubicarStockModal
+          producto={modal.producto}
+          sucursales={sucursales}
           onCerrar={() => setModal(null)}
           onGuardado={async () => {
             setModal(null);
@@ -613,14 +673,20 @@ function EditarMarcaModal({
 
 function NuevoProductoModal({
   marcas,
+  sucursales,
   onCerrar,
   onGuardado,
 }: {
   marcas: Marca[];
+  sucursales: Sucursal[];
   onCerrar: () => void;
   onGuardado: () => void | Promise<void>;
 }) {
+  const matrizDefault = sucursales.find((s) => s.es_matriz)?.id ?? sucursales[0]?.id ?? '';
+
   const [marcaId, setMarcaId] = useState(marcas[0]?.id ?? '');
+  const [sucursalId, setSucursalId] = useState(matrizDefault);
+  const [cantidadInicial, setCantidadInicial] = useState('1');
   const [modelo, setModelo] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -643,11 +709,21 @@ function NuevoProductoModal({
       setError('El código de barras es obligatorio.');
       return;
     }
+    if (!sucursalId) {
+      setError('Selecciona la sucursal de alta.');
+      return;
+    }
     const precioNum = Number(precio);
     if (Number.isNaN(precioNum) || precioNum < 0) {
       setError('Ingresa un precio válido (mayor o igual a cero).');
       return;
     }
+    const cantNum = Number(cantidadInicial);
+    if (Number.isNaN(cantNum) || cantNum < 0) {
+      setError('Ingresa una cantidad inicial válida.');
+      return;
+    }
+
     setGuardando(true);
     setError(null);
     try {
@@ -658,6 +734,8 @@ function NuevoProductoModal({
         descripcion: descripcion.trim() || undefined,
         precio: precioNum,
         requiere_casco: requiereCasco,
+        sucursal_id: sucursalId,
+        cantidad_inicial: cantNum,
       });
       await onGuardado();
     } catch (err) {
@@ -692,6 +770,33 @@ function NuevoProductoModal({
               onChange={(e) => setModelo(e.target.value)}
               placeholder="Ej. NS40ZL, L-48/91-700"
               autoFocus
+            />
+          </label>
+        </div>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal de Alta (Inventario Inicial)</span>
+            <select
+              className={styles.select}
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+            >
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} {s.es_matriz ? '(Matriz - Por defecto)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Stock Inicial en Tienda</span>
+            <input
+              className={styles.input}
+              inputMode="numeric"
+              value={cantidadInicial}
+              onChange={(e) => setCantidadInicial(e.target.value)}
+              placeholder="1"
             />
           </label>
         </div>
@@ -810,6 +915,139 @@ function PrecioModal({
           </button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Actualizar Precio'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ReubicarStockModal({
+  producto,
+  sucursales,
+  onCerrar,
+  onGuardado,
+}: {
+  producto: Producto;
+  sucursales: Sucursal[];
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const existencias = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
+  const origenDefault = existencias[0]?.sucursal_id ?? sucursales[0]?.id ?? '';
+  const destinoDefault =
+    sucursales.find((s) => s.id !== origenDefault)?.id ?? sucursales[1]?.id ?? '';
+
+  const [origenId, setOrigenId] = useState(origenDefault);
+  const [destinoId, setDestinoId] = useState(destinoDefault);
+  const [cantidad, setCantidad] = useState(String(existencias[0]?.cantidad ?? 1));
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const existenciaOrigen = existencias.find((e) => e.sucursal_id === origenId);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (origenId === destinoId) {
+      setError('La sucursal de origen y destino deben ser distintas.');
+      return;
+    }
+    const cantNum = Number(cantidad);
+    if (Number.isNaN(cantNum) || cantNum <= 0) {
+      setError('Ingresa una cantidad válida a reubicar.');
+      return;
+    }
+    if (existenciaOrigen && cantNum > existenciaOrigen.cantidad) {
+      setError(`Solo hay ${existenciaOrigen.cantidad} unidad(es) disponible(s) en la tienda de origen.`);
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await transferirInventario({
+        producto_id: producto.id,
+        sucursal_origen_id: origenId,
+        sucursal_destino_id: destinoId,
+        cantidad: cantNum,
+        nota: 'Corrección de sucursal inicial',
+      });
+      await onGuardado();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo={`Corregir Sucursal: ${producto.modelo}`} onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <p className={styles.helperText}>
+          Usa esta opción si el producto fue asignado por error a una sucursal distinta al momento del registro.
+        </p>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Ubicación Actual (Origen)</span>
+            <select
+              className={styles.select}
+              value={origenId}
+              onChange={(e) => {
+                const nuevoOrigen = e.target.value;
+                setOrigenId(nuevoOrigen);
+                const stock = existencias.find((x) => x.sucursal_id === nuevoOrigen)?.cantidad ?? 1;
+                setCantidad(String(stock));
+              }}
+            >
+              {existencias.map((inv) => {
+                const suc = sucursales.find((s) => s.id === inv.sucursal_id);
+                return (
+                  <option key={inv.sucursal_id} value={inv.sucursal_id}>
+                    {suc?.nombre ?? 'Tienda'} ({inv.cantidad} en existencia)
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal Correcta (Destino)</span>
+            <select
+              className={styles.select}
+              value={destinoId}
+              onChange={(e) => setDestinoId(e.target.value)}
+            >
+              {sucursales
+                .filter((s) => s.id !== origenId)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Cantidad de Unidades a Mover</span>
+          <input
+            className={styles.input}
+            inputMode="numeric"
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)}
+            placeholder="1"
+            autoFocus
+          />
+        </label>
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Reubicando…' : 'Corregir Ubicación'}
           </button>
         </div>
       </form>

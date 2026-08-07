@@ -257,7 +257,7 @@
 .itemActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .actionBtn {
@@ -291,14 +291,14 @@
   background: rgba(62, 50, 211, 0.06);
   border: 1px solid rgba(62, 50, 211, 0.18);
   color: var(--primary);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   transition: all 0.15s ease;
 }
 
@@ -314,6 +314,33 @@
   background: var(--surface-container);
   color: var(--text-muted);
   border-color: var(--outline-variant);
+}
+
+/* Botón de Reubicar / Corregir Sucursal */
+.btnRelocateAction {
+  background: rgba(86, 84, 168, 0.06);
+  border: 1px solid rgba(86, 84, 168, 0.18);
+  color: var(--secondary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.btnRelocateAction:hover:not(:disabled) {
+  background: var(--secondary);
+  color: #ffffff;
+  border-color: var(--secondary);
+}
+
+.btnRelocateAction:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* Botón de Bote de Basura */
@@ -433,6 +460,24 @@
   border-radius: var(--radius-full);
 }
 
+.stockBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+}
+
+.stockBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-container);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
 /* Modales */
 .overlay {
   position: fixed;
@@ -451,7 +496,7 @@
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   width: 100%;
-  max-width: 540px;
+  max-width: 560px;
   box-shadow: var(--modal-shadow);
   overflow: hidden;
   display: flex;
@@ -528,6 +573,13 @@
 .select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(62, 50, 211, 0.15);
+}
+
+.helperText {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: -2px;
 }
 
 .checkboxField {
