@@ -30,6 +30,7 @@ import {
   IconChevronDown,
   IconCard,
   IconCash,
+  IconRefresh,
 } from '@/components/Icons';
 import styles from './reportes.module.css';
 
@@ -84,6 +85,20 @@ function Reportes({ salir }: { salir: () => void }) {
   const [reporte, setReporte] = useState<ReporteVentas | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const tieneFiltrosActivos = Boolean(
+    sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte,
+  );
+
+  function reiniciarFiltros() {
+    setSucursalId('');
+    setUsuarioId('');
+    setProductoId('');
+    setFechaDesde('');
+    setFechaHasta(hoyLocal());
+    setReporte(null);
+    setError(null);
+  }
 
   useEffect(() => {
     let activo = true;
@@ -296,11 +311,26 @@ function Reportes({ salir }: { salir: () => void }) {
                 >
                   {cargando ? 'Consultando…' : 'Consultar'}
                 </button>
+
+                {tieneFiltrosActivos && (
+                  <button
+                    className={styles.btnSecondary}
+                    onClick={reiniciarFiltros}
+                    disabled={cargando}
+                    title="Restablecer todos los filtros"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <IconRefresh style={{ width: '13px', height: '13px' }} />
+                    <span>Limpiar</span>
+                  </button>
+                )}
+
                 {reporte && reporte.ventas.length > 0 && (
                   <button
                     className={styles.btnSecondary}
                     onClick={descargarCsv}
                     style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                    title="Exportar reporte actual a CSV"
                   >
                     <IconDownload style={{ width: '14px', height: '14px' }} />
                     <span>CSV</span>
