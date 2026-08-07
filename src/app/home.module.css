@@ -181,13 +181,14 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 1400px;
+  max-width: 1600px;
+  width: 100%;
 }
 
 /* Grid Bento de KPIs */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 16px;
 }
 
@@ -244,18 +245,33 @@
 }
 
 .statSub {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-/* Tablas Bento Cards */
+/* Bento Grid Principal: Rendimiento por Sucursal + Últimas Transacciones */
+.bentoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .bentoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bentoCard {
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   box-shadow: var(--card-shadow);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .cardHeader {
@@ -278,12 +294,157 @@
   gap: 8px;
 }
 
-.cardTitleIcon {
+.cardBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(62, 50, 211, 0.08);
   color: var(--primary);
-  display: flex;
-  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
 }
 
+.cardLink {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.cardLink:hover {
+  opacity: 0.8;
+}
+
+/* Lista y Tarjetas de Sucursal */
+.branchesList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+
+.branchItem {
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s ease;
+}
+
+.branchItem:hover {
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
+.branchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.branchNameGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.branchName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.matrizTag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(129, 140, 248, 0.15);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.statusOpen {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--success-bg);
+  color: var(--success-text);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.statusClosed {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-container);
+  color: var(--text-muted);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--outline-variant);
+}
+
+.branchMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  background: var(--surface);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--outline-variant);
+}
+
+.metricCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metricLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.metricVal {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cashBoxInfo {
+  padding-top: 4px;
+  border-top: 1px dashed var(--outline-variant);
+}
+
+.cashBoxRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.cashBoxLabel {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.cashBoxValue {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Tabla de Transacciones */
 .tableScroll {
   overflow-x: auto;
   width: 100%;
@@ -323,115 +484,12 @@
   background: rgba(62, 50, 211, 0.02);
 }
 
-.textRight {
-  text-align: right;
-}
-
-.textCenter {
-  text-align: center;
-}
-
-.badgeMatriz {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: #e9e5ff;
-  color: var(--primary);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  margin-left: 6px;
-}
-
-.badgeAbierta {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--success-bg);
-  color: var(--success-text);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-}
-
-.badgeDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--success);
-}
-
-.badgeCerrada {
-  display: inline-flex;
-  align-items: center;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--surface-container);
-  color: var(--text-muted);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--outline-variant);
-}
-
-.paymentBadge {
+.paymentMethod {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--text-primary);
-}
-
-/* Quick Nav Cards */
-.quickNavGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.quickNavCard {
-  background: var(--surface);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--radius-md);
-  padding: 18px 20px;
-  box-shadow: var(--card-shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  transition: all 0.15s ease;
-}
-
-.quickNavCard:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
-  box-shadow: 0 4px 12px rgba(62, 50, 211, 0.08);
-}
-
-.quickNavHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.quickNavTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.quickNavArrow {
-  color: var(--primary);
-  display: flex;
-  align-items: center;
-}
-
-.quickNavDesc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  font-weight: 500;
 }
 
 /* Estados de Error y Carga */
