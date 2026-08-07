@@ -246,7 +246,46 @@ function DashboardAdmin({
                 </div>
               </section>
 
-              {/* Row 2: Bento Grid Layout */}
+              {/* Row 2: Módulos Operativos Rápidos */}
+              <section className={styles.quickNavGrid}>
+                <Link href="/catalogo" className={styles.quickNavCard}>
+                  <div className={styles.quickNavIconBadge}>
+                    <IconCatalog style={{ width: '22px', height: '22px' }} />
+                  </div>
+                  <div className={styles.quickNavContent}>
+                    <h3 className={styles.quickNavTitle}>Catálogo</h3>
+                    <p className={styles.quickNavDesc}>
+                      Gestione modelos, marcas y compatibilidades de baterías.
+                    </p>
+                  </div>
+                </Link>
+
+                <Link href="/inventario" className={styles.quickNavCard}>
+                  <div className={styles.quickNavIconBadge}>
+                    <IconInventory style={{ width: '22px', height: '22px' }} />
+                  </div>
+                  <div className={styles.quickNavContent}>
+                    <h3 className={styles.quickNavTitle}>Inventario</h3>
+                    <p className={styles.quickNavDesc}>
+                      Control de existencias, traspasos y alertas de stock bajo.
+                    </p>
+                  </div>
+                </Link>
+
+                <Link href="/reportes" className={styles.quickNavCard}>
+                  <div className={styles.quickNavIconBadge}>
+                    <IconReports style={{ width: '22px', height: '22px' }} />
+                  </div>
+                  <div className={styles.quickNavContent}>
+                    <h3 className={styles.quickNavTitle}>Reportes</h3>
+                    <p className={styles.quickNavDesc}>
+                      Análisis de ventas, cortes de caja y rendimiento general.
+                    </p>
+                  </div>
+                </Link>
+              </section>
+
+              {/* Row 3: Bento Grid Layout */}
               <div className={styles.bentoGrid}>
                 {/* Bento Col 1: Estado de Sucursales */}
                 <section className={styles.bentoCard}>
