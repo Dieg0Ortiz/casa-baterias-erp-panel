@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/lib/api';
-import { useSesion } from '@/lib/auth';
+import { logout, useSesion } from '@/lib/auth';
 import {
   type Empleado,
   type ReporteVentas,
@@ -40,18 +40,24 @@ export default function ReportesPage() {
 
   if (!autenticado) return null;
 
+  function salir() {
+    logout();
+    router.replace('/login');
+    router.refresh();
+  }
+
   if (perfil?.rol !== 'administrador') {
     return (
-      <div className={styles.page}>
-        <p className={styles.vacio}>Acceso restringido para administradores.</p>
+      <div className={styles.emptyText}>
+        Acceso restringido exclusivamente para administradores.
       </div>
     );
   }
 
-  return <Reportes />;
+  return <Reportes salir={salir} />;
 }
 
-function Reportes() {
+function Reportes({ salir }: { salir: () => void }) {
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -149,172 +155,229 @@ function Reportes() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <Link href="/" className={styles.brand}>
-            ← Panel
-          </Link>
-          <h1>Reporte de ventas</h1>
+    <div className={styles.layout}>
+      {/* Sidebar Persistente */}
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <span className={styles.brandIcon}>⚡</span>
+          <div>
+            <h1 className={styles.brandTitle}>Casa Baterías</h1>
+            <p className={styles.brandSubtitle}>Control Central</p>
+          </div>
         </div>
-      </header>
 
-      <main className={styles.main}>
-        <section className={styles.card}>
-          <div className={styles.filtros}>
-            <label className={styles.campo}>
-              <span>Sucursal</span>
-              <select
-                value={sucursalId}
-                onChange={(e) => setSucursalId(e.target.value)}
-              >
-                <option value="">Todas</option>
-                {sucursales.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.campo}>
-              <span>Empleado</span>
-              <select
-                value={usuarioId}
-                onChange={(e) => setUsuarioId(e.target.value)}
-              >
-                <option value="">Todos</option>
-                {empleados.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nombre_completo}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.campo}>
-              <span>Producto</span>
-              <select
-                value={productoId}
-                onChange={(e) => setProductoId(e.target.value)}
-              >
-                <option value="">Todos</option>
-                {productos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.modelo}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.campo}>
-              <span>Desde</span>
-              <input
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-              />
-            </label>
-            <label className={styles.campo}>
-              <span>Hasta</span>
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-              />
-            </label>
-            <div className={styles.acciones}>
-              <button
-                className={styles.boton}
-                onClick={() => void consultar()}
-                disabled={cargando}
-              >
-                {cargando ? 'Consultando…' : 'Consultar'}
-              </button>
-              {reporte && reporte.ventas.length > 0 && (
-                <button
-                  className={styles.botonSecundario}
-                  onClick={descargarCsv}
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.navItem}>
+            <span className={styles.navIcon}>📊</span>
+            <span>Dashboard</span>
+          </Link>
+          <Link href="/catalogo" className={styles.navItem}>
+            <span className={styles.navIcon}>📦</span>
+            <span>Catálogo</span>
+          </Link>
+          <Link href="/inventario" className={styles.navItem}>
+            <span className={styles.navIcon}>🏭</span>
+            <span>Inventario</span>
+          </Link>
+          <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`}>
+            <span className={styles.navIcon}>📋</span>
+            <span>Reportes</span>
+          </Link>
+        </nav>
+
+        <div className={styles.sidebarFooter}>
+          <button className={styles.logoutBtn} onClick={salir}>
+            <span>🚪</span>
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Contenido Principal */}
+      <div className={styles.mainWrapper}>
+        <header className={styles.header}>
+          <div className={styles.breadcrumb}>
+            <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+            <span>/</span>
+            <span className={styles.breadcrumbActive}>Auditoría y Reportes de Ventas</span>
+          </div>
+        </header>
+
+        <main className={styles.mainContent}>
+          {/* Card de Filtros */}
+          <section className={styles.filterCard}>
+            <div className={styles.filtersGrid}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Sucursal</span>
+                <select
+                  className={styles.select}
+                  value={sucursalId}
+                  onChange={(e) => setSucursalId(e.target.value)}
                 >
-                  Descargar CSV
+                  <option value="">Todas las tiendas</option>
+                  {sucursales.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Empleado / Cajero</span>
+                <select
+                  className={styles.select}
+                  value={usuarioId}
+                  onChange={(e) => setUsuarioId(e.target.value)}
+                >
+                  <option value="">Todos los empleados</option>
+                  {empleados.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.nombre_completo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Producto / Modelo</span>
+                <select
+                  className={styles.select}
+                  value={productoId}
+                  onChange={(e) => setProductoId(e.target.value)}
+                >
+                  <option value="">Todos los productos</option>
+                  {productos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.modelo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Desde</span>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>Hasta</span>
+                <input
+                  type="date"
+                  className={styles.input}
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                />
+              </label>
+
+              <div className={styles.filterActions}>
+                <button
+                  className={styles.btnPrimary}
+                  onClick={() => void consultar()}
+                  disabled={cargando}
+                >
+                  {cargando ? 'Consultando…' : 'Consultar'}
                 </button>
-              )}
+                {reporte && reporte.ventas.length > 0 && (
+                  <button className={styles.btnSecondary} onClick={descargarCsv}>
+                    📥 CSV
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {error && (
-          <div className={styles.error} role="alert">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className={styles.errorBanner} role="alert">
+              {error}
+            </div>
+          )}
 
-        {reporte && (
-          <>
-            <section className={styles.resumen}>
-              <div className={styles.stat}>
-                <span className={styles.statValue}>{reporte.totales.ventas}</span>
-                <span className={styles.statLabel}>Ventas</span>
-              </div>
-              <div className={styles.stat}>
-                <span className={styles.statValue}>
-                  {formatearDinero(reporte.totales.monto)}
-                </span>
-                <span className={styles.statLabel}>Monto total</span>
-              </div>
-              <div className={styles.stat}>
-                <span className={styles.statValue}>
-                  {reporte.totales.unidades}
-                </span>
-                <span className={styles.statLabel}>Unidades</span>
-              </div>
-            </section>
+          {/* Resultados de la Consulta */}
+          {reporte && (
+            <>
+              <section className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <div className={`${styles.statValue} mono`}>{reporte.totales.ventas}</div>
+                  <div className={styles.statLabel}>Ventas Registradas</div>
+                </div>
 
-            {reporte.ventas.length === 0 ? (
-              <p className={styles.vacio}>
-                No hay ventas para los filtros seleccionados.
-              </p>
-            ) : (
-              <div className={styles.tablaScroll}>
-                <table className={styles.tabla}>
-                  <thead>
-                    <tr>
-                      <th>Folio</th>
-                      <th>Fecha</th>
-                      <th>Sucursal</th>
-                      <th>Empleado</th>
-                      <th>Pago</th>
-                      <th>Items</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reporte.ventas.map((venta) => (
-                      <VentaFila
-                        key={venta.id}
-                        folio={venta.folio}
-                        fecha={venta.created_at}
-                        sucursal={venta.sucursal}
-                        empleado={venta.usuario}
-                        metodoPago={venta.metodo_pago}
-                        total={venta.total}
-                        items={venta.items.map((item) => ({
-                          producto: item.producto,
-                          cantidad: item.cantidad,
-                          precio: item.precio_unitario,
-                        }))}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </>
-        )}
+                <div className={styles.statCard}>
+                  <div className={`${styles.statValue} mono`} style={{ color: 'var(--primary)' }}>
+                    {formatearDinero(reporte.totales.monto)}
+                  </div>
+                  <div className={styles.statLabel}>Monto Total Recaudado</div>
+                </div>
 
-        {!reporte && !cargando && !error && (
-          <p className={styles.vacio}>
-            Aplica los filtros y presiona «Consultar».
-          </p>
-        )}
-      </main>
+                <div className={styles.statCard}>
+                  <div className={`${styles.statValue} mono`}>{reporte.totales.unidades}</div>
+                  <div className={styles.statLabel}>Baterías y Unidades Vendidas</div>
+                </div>
+              </section>
+
+              <section className={styles.bentoCard}>
+                <div className={styles.cardHeader}>
+                  <h2 className={styles.cardTitle}>
+                    <span>📋</span>
+                    <span>Detalle de Transacciones (Haz clic en una fila para ver el desglose)</span>
+                  </h2>
+                </div>
+
+                <div className={styles.tableScroll}>
+                  {reporte.ventas.length === 0 ? (
+                    <div className={styles.emptyText}>
+                      No se encontraron ventas para los filtros seleccionados.
+                    </div>
+                  ) : (
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Folio</th>
+                          <th>Fecha y Hora</th>
+                          <th>Sucursal</th>
+                          <th>Empleado</th>
+                          <th>Método de Pago</th>
+                          <th style={{ textAlign: 'center' }}>Ítems</th>
+                          <th style={{ textAlign: 'right' }}>Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reporte.ventas.map((venta) => (
+                          <VentaFila
+                            key={venta.id}
+                            folio={venta.folio}
+                            fecha={venta.created_at}
+                            sucursal={venta.sucursal}
+                            empleado={venta.usuario}
+                            metodoPago={venta.metodo_pago}
+                            total={venta.total}
+                            items={venta.items.map((item) => ({
+                              producto: item.producto,
+                              cantidad: item.cantidad,
+                              precio: item.precio_unitario,
+                            }))}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+
+          {!reporte && !cargando && !error && (
+            <div className={styles.emptyText}>
+              Selecciona los filtros y haz clic en «Consultar» para generar el reporte de auditoría.
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
@@ -337,31 +400,56 @@ function VentaFila({
   items: Array<{ producto: string | null; cantidad: number; precio: number }>;
 }) {
   const [abierta, setAbierta] = useState(false);
+
   return (
     <>
-      <tr className={styles.filaClick} onClick={() => setAbierta((v) => !v)}>
-        <td className={styles.mono}>{folio}</td>
-        <td>{new Date(fecha).toLocaleString('es-MX')}</td>
+      <tr className={styles.rowClickable} onClick={() => setAbierta((v) => !v)}>
+        <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
+          {abierta ? '▾' : '▸'} {folio}
+        </td>
+        <td className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+          {new Date(fecha).toLocaleString('es-MX')}
+        </td>
         <td>{sucursal ?? '—'}</td>
         <td>{empleado ?? '—'}</td>
-        <td>{metodoPago === 'tarjeta' ? 'Tarjeta' : 'Efectivo'}</td>
-        <td>{items.length}</td>
-        <td className={styles.total}>{formatearDinero(total)}</td>
+        <td>
+          <span style={{ textTransform: 'capitalize' }}>
+            {metodoPago === 'tarjeta' ? '💳 Tarjeta' : '💵 Efectivo'}
+          </span>
+        </td>
+        <td style={{ textAlign: 'center' }}>
+          <span style={{ background: 'var(--surface-container)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 600 }}>
+            {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
+          </span>
+        </td>
+        <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
+          {formatearDinero(total)}
+        </td>
       </tr>
       {abierta && (
-        <tr>
-          <td colSpan={7} className={styles.detalle}>
+        <tr className={styles.detailRow}>
+          <td colSpan={7} className={styles.detailWrapper}>
             {items.length === 0 ? (
-              <span>Sin detalle.</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Sin detalle de ítems registrado.</span>
             ) : (
-              <table className={styles.detalleTabla}>
+              <table className={styles.detailTable}>
+                <thead>
+                  <tr>
+                    <th>Producto / Modelo</th>
+                    <th style={{ textAlign: 'right' }}>Cantidad</th>
+                    <th style={{ textAlign: 'right' }}>Precio Unitario</th>
+                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {items.map((item, i) => (
                     <tr key={i}>
-                      <td>{item.producto ?? '—'}</td>
-                      <td>{item.cantidad}</td>
-                      <td>{formatearDinero(item.precio)}</td>
-                      <td>{formatearDinero(item.cantidad * item.precio)}</td>
+                      <td><strong>{item.producto ?? '—'}</strong></td>
+                      <td className="mono" style={{ textAlign: 'right' }}>{item.cantidad}</td>
+                      <td className="mono" style={{ textAlign: 'right' }}>{formatearDinero(item.precio)}</td>
+                      <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                        {formatearDinero(item.cantidad * item.precio)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -40,25 +40,28 @@ export default function LoginPage() {
     <div className={styles.page}>
       <form className={styles.card} onSubmit={entrar}>
         <div className={styles.brand}>
-          <span className={styles.brandIcon}>⚡</span>
-          <h1>Casa Baterías</h1>
-          <p>Panel de administración</p>
+          <div className={styles.brandIconWrapper}>⚡</div>
+          <h1 className={styles.brandTitle}>Casa Baterías</h1>
+          <p className={styles.brandSubtitle}>Panel de administración central</p>
         </div>
 
         <label className={styles.field}>
-          <span>Correo</span>
+          <span className={styles.fieldLabel}>Correo Electrónico</span>
           <input
+            className={styles.input}
             type="email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="usuario@erp.local"
+            autoFocus
           />
         </label>
 
         <label className={styles.field}>
-          <span>Contraseña</span>
+          <span className={styles.fieldLabel}>Contraseña</span>
           <input
+            className={styles.input}
             type="password"
             autoComplete="current-password"
             value={password}
@@ -70,8 +73,12 @@ export default function LoginPage() {
         {error && <p className={styles.error}>{error}</p>}
 
         <button type="submit" className={styles.button} disabled={cargando}>
-          {cargando ? 'Entrando…' : 'Entrar'}
+          {cargando ? 'Iniciando sesión…' : 'Acceder al Panel'}
         </button>
+
+        <p className={styles.footerInfo}>
+          Acceso restringido para el titular y administradores
+        </p>
       </form>
     </div>
   );

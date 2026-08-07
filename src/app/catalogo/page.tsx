@@ -53,14 +53,14 @@ export default function CatalogoPage() {
       router.refresh();
     }
     return (
-      <div className={styles.page}>
-        <div className={styles.cardCentrado}>
+      <div className={styles.lockedPage}>
+        <div className={styles.lockedCard}>
           <h1>Acceso restringido</h1>
           <p>
             Este panel es solo para administradores. Tu usuario tiene el rol{' '}
             <strong>trabajador</strong> y debe usar la app de ventas.
           </p>
-          <button className={styles.boton} onClick={salir}>
+          <button className={styles.btnPrimarySm} onClick={salir}>
             Salir
           </button>
         </div>
@@ -172,162 +172,232 @@ function CatalogoAdmin() {
   }
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <div>
-          <h1>Catálogo</h1>
-          <p>Marcas y productos — panel de administración</p>
+    <div className={styles.layout}>
+      {/* Sidebar Persistente */}
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}>
+          <span className={styles.brandIcon}>⚡</span>
+          <div>
+            <h1 className={styles.brandTitle}>Casa Baterías</h1>
+            <p className={styles.brandSubtitle}>Control Central</p>
+          </div>
         </div>
-        <nav className={styles.headerNav}>
-          <Link href="/" className={styles.backLink}>
-            ← Panel
+
+        <nav className={styles.nav}>
+          <Link href="/" className={styles.navItem}>
+            <span className={styles.navIcon}>📊</span>
+            <span>Dashboard</span>
           </Link>
-          <button className={styles.linkButton} onClick={salir}>
-            Salir
-          </button>
+          <Link href="/catalogo" className={`${styles.navItem} ${styles.navItemActive}`}>
+            <span className={styles.navIcon}>📦</span>
+            <span>Catálogo</span>
+          </Link>
+          <Link href="/inventario" className={styles.navItem}>
+            <span className={styles.navIcon}>🏭</span>
+            <span>Inventario</span>
+          </Link>
+          <Link href="/reportes" className={styles.navItem}>
+            <span className={styles.navIcon}>📋</span>
+            <span>Reportes</span>
+          </Link>
         </nav>
-      </header>
 
-      <main className={styles.main}>
-        {error && (
-          <div className={styles.error} role="alert">
-            <span>{error}</span>
-            <button className={styles.enlace} onClick={() => void recargar()}>
-              Reintentar
-            </button>
-          </div>
-        )}
+        <div className={styles.sidebarFooter}>
+          <button className={styles.logoutBtn} onClick={salir}>
+            <span>🚪</span>
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </aside>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Marcas</h2>
-            <button
-              className={styles.boton}
-              onClick={() => setModal({ tipo: 'nuevaMarca' })}
-              disabled={operando}
-            >
-              Nueva marca
-            </button>
+      {/* Contenido Principal */}
+      <div className={styles.mainWrapper}>
+        <header className={styles.header}>
+          <div className={styles.breadcrumb}>
+            <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+            <span>/</span>
+            <span className={styles.breadcrumbActive}>Catálogo de Productos</span>
           </div>
-          {cargando ? (
-            <p className={styles.cargando}>Cargando…</p>
-          ) : marcas.length === 0 ? (
-            <p className={styles.vacio}>No hay marcas registradas.</p>
-          ) : (
-            <ul className={styles.lista}>
-              {marcas.map((marca) => (
-                <li key={marca.id} className={styles.filaMarca}>
-                  <div>
-                    <strong>{marca.nombre}</strong>
-                    {marca.descripcion && <p>{marca.descripcion}</p>}
-                  </div>
-                  <div className={styles.acciones}>
-                    <button
-                      className={styles.enlace}
-                      onClick={() => setModal({ tipo: 'editarMarca', marca })}
-                      disabled={operando}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      className={`${styles.enlace} ${styles.enlacePeligro}`}
-                      onClick={() => void eliminar(marca)}
-                      disabled={operando}
-                    >
-                      Eliminar
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        </header>
 
-        <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2>Productos</h2>
-            <button
-              className={styles.boton}
-              onClick={() => setModal({ tipo: 'nuevoProducto' })}
-              disabled={operando || marcas.length === 0}
-            >
-              Nuevo producto
-            </button>
-          </div>
-          <input
-            className={styles.busqueda}
-            placeholder="Buscar por modelo o código de barras"
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-          />
-          {cargando ? (
-            <p className={styles.cargando}>Cargando…</p>
-          ) : (
-            <div className={styles.tablaScroll}>
-              <table className={styles.tabla}>
-                <thead>
-                  <tr>
-                    <th>Modelo</th>
-                    <th>Marca</th>
-                    <th>Código</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                    <th>Casco</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibles.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className={styles.vacio}>
-                        No hay productos.
-                      </td>
-                    </tr>
-                  )}
-                  {visibles.map((producto) => (
-                    <tr
-                      key={producto.id}
-                      className={producto.activo ? undefined : styles.inactivo}
-                    >
-                      <td>{producto.modelo}</td>
-                      <td>{producto.marcas?.nombre ?? '—'}</td>
-                      <td className={styles.mono}>{producto.codigo_barras}</td>
-                      <td>{formatearDinero(producto.precio)}</td>
-                      <td>{stockTotal(producto)}</td>
-                      <td>{producto.requiere_casco ? 'Sí' : 'No'}</td>
-                      <td>{producto.activo ? 'Activo' : 'Dado de baja'}</td>
-                      <td>
-                        <div className={styles.acciones}>
-                          <button
-                            className={styles.enlace}
-                            onClick={() =>
-                              setModal({ tipo: 'precio', producto })
-                            }
-                            disabled={operando || !producto.activo}
-                          >
-                            Cambiar precio
-                          </button>
-                          {producto.activo && (
-                            <button
-                              className={`${styles.enlace} ${styles.enlacePeligro}`}
-                              onClick={() => void bajarDeCatalogo(producto)}
-                              disabled={operando}
-                            >
-                              Baja
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <main className={styles.mainContent}>
+          {error && (
+            <div className={styles.errorBanner} role="alert">
+              <span>{error}</span>
+              <button className={styles.btnSecondary} onClick={() => void recargar()}>
+                Reintentar
+              </button>
             </div>
           )}
-        </section>
-      </main>
 
+          <div className={styles.catalogGrid}>
+            {/* Columna Izquierda: Marcas */}
+            <section className={styles.bentoCard}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>Marcas Registradas</h2>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => setModal({ tipo: 'nuevaMarca' })}
+                  disabled={operando}
+                >
+                  + Nueva
+                </button>
+              </div>
+
+              {cargando ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Cargando marcas…
+                </div>
+              ) : marcas.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  No hay marcas registradas.
+                </div>
+              ) : (
+                <ul className={styles.brandList}>
+                  {marcas.map((marca) => (
+                    <li key={marca.id} className={styles.brandItem}>
+                      <div>
+                        <div className={styles.brandName}>{marca.nombre}</div>
+                        {marca.descripcion && <p className={styles.brandDesc}>{marca.descripcion}</p>}
+                      </div>
+                      <div className={styles.itemActions}>
+                        <button
+                          className={styles.actionBtn}
+                          onClick={() => setModal({ tipo: 'editarMarca', marca })}
+                          disabled={operando}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className={styles.actionBtnDanger}
+                          onClick={() => void eliminar(marca)}
+                          disabled={operando}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Columna Derecha: Productos */}
+            <section className={styles.bentoCard}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>Catálogo de Baterías y Productos</h2>
+                <button
+                  className={styles.btnPrimarySm}
+                  onClick={() => setModal({ tipo: 'nuevoProducto' })}
+                  disabled={operando || marcas.length === 0}
+                  title={marcas.length === 0 ? 'Registra una marca primero' : undefined}
+                >
+                  + Nuevo Producto
+                </button>
+              </div>
+
+              <div className={styles.toolbar}>
+                <span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>🔍</span>
+                <input
+                  className={styles.searchInput}
+                  placeholder="Buscar producto por modelo o código de barras…"
+                  value={filtro}
+                  onChange={(e) => setFiltro(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.tableScroll}>
+                {cargando ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                    Cargando catálogo…
+                  </div>
+                ) : (
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Modelo</th>
+                        <th>Marca</th>
+                        <th>Código de Barras</th>
+                        <th style={{ textAlign: 'right' }}>Precio</th>
+                        <th style={{ textAlign: 'right' }}>Stock Total</th>
+                        <th style={{ textAlign: 'center' }}>Requiere Casco</th>
+                        <th style={{ textAlign: 'center' }}>Estado</th>
+                        <th style={{ textAlign: 'center' }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibles.length === 0 && (
+                        <tr>
+                          <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No se encontraron productos coincidentes.
+                          </td>
+                        </tr>
+                      )}
+                      {visibles.map((producto) => (
+                        <tr
+                          key={producto.id}
+                          className={producto.activo ? undefined : styles.rowInactive}
+                        >
+                          <td>
+                            <strong>{producto.modelo}</strong>
+                            {producto.descripcion && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                {producto.descripcion}
+                              </div>
+                            )}
+                          </td>
+                          <td>{producto.marcas?.nombre ?? '—'}</td>
+                          <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                            {producto.codigo_barras}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
+                            {formatearDinero(producto.precio)}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                            {stockTotal(producto)}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {producto.requiere_casco ? '⚡ Sí' : 'No'}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {producto.activo ? (
+                              <span className={styles.badgeActivo}>Activo</span>
+                            ) : (
+                              <span className={styles.badgeBaja}>Baja</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div className={styles.itemActions} style={{ justifyContent: 'center' }}>
+                              <button
+                                className={styles.actionBtn}
+                                onClick={() => setModal({ tipo: 'precio', producto })}
+                                disabled={operando || !producto.activo}
+                              >
+                                Precio
+                              </button>
+                              {producto.activo && (
+                                <button
+                                  className={styles.actionBtnDanger}
+                                  onClick={() => void bajarDeCatalogo(producto)}
+                                  disabled={operando}
+                                >
+                                  Baja
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+
+      {/* Modales */}
       {modal?.tipo === 'nuevaMarca' && (
         <MarcaModal
           onCerrar={() => setModal(null)}
@@ -391,11 +461,7 @@ function Modal({
       >
         <div className={styles.modalHeader}>
           <h3>{titulo}</h3>
-          <button
-            className={styles.iconButton}
-            onClick={onCerrar}
-            aria-label="Cerrar"
-          >
+          <button className={styles.closeBtn} onClick={onCerrar} aria-label="Cerrar">
             ✕
           </button>
         </div>
@@ -422,7 +488,7 @@ function MarcaModal({
   async function guardar(e: FormEvent) {
     e.preventDefault();
     if (!nombre.trim()) {
-      setError('El nombre es obligatorio.');
+      setError('El nombre de la marca es obligatorio.');
       return;
     }
     setGuardando(true);
@@ -442,36 +508,34 @@ function MarcaModal({
   }
 
   return (
-    <Modal titulo={marca ? 'Editar marca' : 'Nueva marca'} onCerrar={onCerrar}>
+    <Modal titulo={marca ? 'Editar Marca' : 'Nueva Marca'} onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
-        <label className={styles.campo}>
-          <span>Nombre</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nombre de la Marca</span>
           <input
             className={styles.input}
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej. LTH, Óptima, América"
             autoFocus
           />
         </label>
-        <label className={styles.campo}>
-          <span>Descripción (opcional)</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Descripción (opcional)</span>
           <input
             className={styles.input}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Línea premium, estándar, etc."
           />
         </label>
-        {error && <p className={styles.errorForm}>{error}</p>}
+        {error && <p className={styles.errorBanner}>{error}</p>}
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.botonSecundario}
-            onClick={onCerrar}
-          >
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
             Cancelar
           </button>
-          <button type="submit" className={styles.boton} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar'}
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar Marca'}
           </button>
         </div>
       </form>
@@ -509,17 +573,17 @@ function ProductoModal({
       return;
     }
     if (!modelo.trim()) {
-      setError('El modelo es obligatorio.');
+      setError('El modelo del producto es obligatorio.');
       return;
     }
     if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Precio inválido.');
+      setError('Precio en MXN inválido.');
       return;
     }
     const cantidad =
       cantidadInicial.trim() === '' ? undefined : Number(cantidadInicial);
     if (cantidad !== undefined && (Number.isNaN(cantidad) || cantidad < 0)) {
-      setError('Cantidad inválida.');
+      setError('Cantidad inicial inválida.');
       return;
     }
     setGuardando(true);
@@ -543,13 +607,13 @@ function ProductoModal({
   }
 
   return (
-    <Modal titulo="Nuevo producto" onCerrar={onCerrar}>
+    <Modal titulo="Nuevo Producto en Catálogo" onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
-        <div className={styles.fila}>
-          <label className={styles.campo}>
-            <span>Marca</span>
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Marca</span>
             <select
-              className={styles.input}
+              className={styles.select}
               value={marcaId}
               onChange={(e) => setMarcaId(e.target.value)}
             >
@@ -560,10 +624,10 @@ function ProductoModal({
               ))}
             </select>
           </label>
-          <label className={styles.campo}>
-            <span>Sucursal</span>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal de Entrada</span>
             <select
-              className={styles.input}
+              className={styles.select}
               value={sucursalId}
               onChange={(e) => setSucursalId(e.target.value)}
             >
@@ -575,35 +639,41 @@ function ProductoModal({
             </select>
           </label>
         </div>
-        <label className={styles.campo}>
-          <span>Modelo</span>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Modelo del Producto</span>
           <input
             className={styles.input}
             value={modelo}
             onChange={(e) => setModelo(e.target.value)}
+            placeholder="Ej. L-42-400, AGM-34"
             autoFocus
           />
         </label>
-        <label className={styles.campo}>
-          <span>Descripción (opcional)</span>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Descripción Técnica (opcional)</span>
           <input
             className={styles.input}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="12V, 400 CCA, Terminal estándar"
           />
         </label>
-        <div className={styles.fila}>
-          <label className={styles.campo}>
-            <span>Precio (MXN)</span>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio Autorizado (MXN)</span>
             <input
               className={styles.input}
               inputMode="decimal"
+              placeholder="0.00"
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
             />
           </label>
-          <label className={styles.campo}>
-            <span>Cantidad inicial</span>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Stock Inicial</span>
             <input
               className={styles.input}
               inputMode="numeric"
@@ -613,34 +683,34 @@ function ProductoModal({
             />
           </label>
         </div>
-        <label className={styles.campo}>
-          <span>Código de fábrica (opcional)</span>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Código de Fábrica (opcional)</span>
           <input
             className={styles.input}
-            placeholder="Si se deja vacío, se genera automáticamente"
+            placeholder="Si se deja vacío, se generará código interno automáticamente"
             value={codigoFabrica}
             onChange={(e) => setCodigoFabrica(e.target.value)}
           />
         </label>
-        <label className={styles.check}>
+
+        <label className={styles.checkboxField}>
           <input
             type="checkbox"
             checked={requiereCasco}
             onChange={(e) => setRequiereCasco(e.target.checked)}
           />
-          <span>Requiere casco</span>
+          <span>Requiere intercambio de casco a cambio</span>
         </label>
-        {error && <p className={styles.errorForm}>{error}</p>}
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.botonSecundario}
-            onClick={onCerrar}
-          >
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
             Cancelar
           </button>
-          <button type="submit" className={styles.boton} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Crear producto'}
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Creando…' : 'Crear Producto'}
           </button>
         </div>
       </form>
@@ -665,7 +735,7 @@ function PrecioModal({
     e.preventDefault();
     const precioNum = Number(precio);
     if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Precio inválido.');
+      setError('Ingresa un precio válido en MXN.');
       return;
     }
     setGuardando(true);
@@ -681,16 +751,19 @@ function PrecioModal({
 
   return (
     <Modal
-      titulo={`Cambiar precio — ${producto.modelo}`}
+      titulo={`Actualizar Precio — ${producto.modelo}`}
       onCerrar={onCerrar}
     >
       <form className={styles.form} onSubmit={guardar}>
-        <p className={styles.actual}>
-          Precio actual:{' '}
-          <strong>{formatearDinero(producto.precio)}</strong>
-        </p>
-        <label className={styles.campo}>
-          <span>Nuevo precio (MXN)</span>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+          Precio vigente actual:{' '}
+          <strong className="mono" style={{ color: 'var(--primary)', fontSize: '15px' }}>
+            {formatearDinero(producto.precio)}
+          </strong>
+        </div>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nuevo Precio Autorizado (MXN)</span>
           <input
             className={styles.input}
             inputMode="decimal"
@@ -699,17 +772,15 @@ function PrecioModal({
             autoFocus
           />
         </label>
-        {error && <p className={styles.errorForm}>{error}</p>}
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
         <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.botonSecundario}
-            onClick={onCerrar}
-          >
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
             Cancelar
           </button>
-          <button type="submit" className={styles.boton} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar'}
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Actualizar Precio'}
           </button>
         </div>
       </form>
