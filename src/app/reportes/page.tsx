@@ -234,6 +234,10 @@ function Reportes({ salir }: { salir: () => void }) {
         <main className={styles.mainContent}>
           {/* Card de Filtros */}
           <section className={styles.filterCard}>
+            <div className={styles.filterHeader}>
+              <h2 className={styles.filterTitle}>Filtros de Búsqueda</h2>
+            </div>
+
             <div className={styles.filtersGrid}>
               <label className={styles.field}>
                 <span className={styles.fieldLabel}>Sucursal</span>
@@ -302,41 +306,44 @@ function Reportes({ salir }: { salir: () => void }) {
                   onChange={(e) => setFechaHasta(e.target.value)}
                 />
               </label>
+            </div>
 
-              <div className={styles.filterActions}>
+            <div className={styles.filterActionsBar}>
+              {tieneFiltrosActivos && (
                 <button
-                  className={styles.btnPrimary}
-                  onClick={() => void consultar()}
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={reiniciarFiltros}
                   disabled={cargando}
+                  title="Restablecer todos los filtros"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 >
-                  {cargando ? 'Consultando…' : 'Consultar'}
+                  <IconRefresh style={{ width: '13px', height: '13px' }} />
+                  <span>Limpiar Filtros</span>
                 </button>
+              )}
 
-                {tieneFiltrosActivos && (
-                  <button
-                    className={styles.btnSecondary}
-                    onClick={reiniciarFiltros}
-                    disabled={cargando}
-                    title="Restablecer todos los filtros"
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <IconRefresh style={{ width: '13px', height: '13px' }} />
-                    <span>Limpiar</span>
-                  </button>
-                )}
+              {reporte && reporte.ventas.length > 0 && (
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  onClick={descargarCsv}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  title="Exportar reporte actual a CSV"
+                >
+                  <IconDownload style={{ width: '14px', height: '14px' }} />
+                  <span>Descargar CSV</span>
+                </button>
+              )}
 
-                {reporte && reporte.ventas.length > 0 && (
-                  <button
-                    className={styles.btnSecondary}
-                    onClick={descargarCsv}
-                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                    title="Exportar reporte actual a CSV"
-                  >
-                    <IconDownload style={{ width: '14px', height: '14px' }} />
-                    <span>CSV</span>
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => void consultar()}
+                disabled={cargando}
+              >
+                {cargando ? 'Consultando…' : 'Consultar Reporte'}
+              </button>
             </div>
           </section>
 
@@ -421,7 +428,7 @@ function Reportes({ salir }: { salir: () => void }) {
 
           {!reporte && !cargando && !error && (
             <div className={styles.emptyText}>
-              Selecciona los filtros y haz clic en «Consultar» para generar el reporte de auditoría.
+              Selecciona los filtros y haz clic en «Consultar Reporte» para generar la auditoría.
             </div>
           )}
         </main>
