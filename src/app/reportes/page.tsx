@@ -18,6 +18,7 @@ import {
   listarProductos,
   listarSucursales,
 } from '@/lib/catalogo';
+import { generarReporteVentasPdf } from '@/lib/generadorPdf';
 import {
   IconBolt,
   IconDashboard,
@@ -142,44 +143,20 @@ function Reportes({ salir }: { salir: () => void }) {
     }
   }
 
-  function descargarCsv() {
+  function descargarPdf() {
     if (!reporte) return;
-    const lineas = [
-      'folio,fecha,sucursal,empleado,metodo_pago,total,producto,cantidad,precio_unitario',
-    ];
-    for (const venta of reporte.ventas) {
-      const base = [
-        venta.folio,
-        venta.created_at,
-        venta.sucursal ?? '',
-        venta.usuario ?? '',
-        venta.metodo_pago ?? 'efectivo',
-        venta.total.toFixed(2),
-      ];
-      if (venta.items.length === 0) {
-        lineas.push(base.join(','));
-      } else {
-        for (const item of venta.items) {
-          lineas.push(
-            [
-              ...base,
-              `"${(item.producto ?? '').replace(/"/g, '""')}"`,
-              item.cantidad,
-              item.precio_unitario.toFixed(2),
-            ].join(','),
-          );
-        }
-      }
-    }
-    const blob = new Blob([lineas.join('\n')], {
-      type: 'text/csv;charset=utf-8;',
+    const sucursalObj = sucursales.find((s) => s.id === sucursalId);
+    const empleadoObj = empleados.find((e) => e.id === usuarioId);
+    const productoObj = productos.find((p) => p.id === productoId);
+
+    generarReporteVentasPdf({
+      reporte,
+      sucursalNombre: sucursalObj?.nombre,
+      empleadoNombre: empleadoObj?.nombre_completo,
+      productoNombre: productoObj?.modelo,
+      fechaDesde,
+      fechaHasta,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ventas-${fechaHasta || 'todas'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   return (
@@ -327,12 +304,20 @@ function Reportes({ salir }: { salir: () => void }) {
                 <button
                   type="button"
                   className={styles.btnSecondary}
-                  onClick={descargarCsv}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  title="Exportar reporte actual a CSV"
+                  onClick={descargarPdf}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    color: 'var(--primary)',
+                    borderColor: 'rgba(62, 50, 211, 0.3)',
+                    background: 'rgba(62, 50, 211, 0.05)',
+                    fontWeight: 600,
+                  }}
+                  title="Generar y descargar reporte oficial en formato PDF estructurado"
                 >
                   <IconDownload style={{ width: '14px', height: '14px' }} />
-                  <span>Descargar CSV</span>
+                  <span>Descargar Reporte PDF</span>
                 </button>
               )}
 
@@ -381,6 +366,24 @@ function Reportes({ salir }: { salir: () => void }) {
                     <IconReports style={{ color: 'var(--primary)' }} />
                     <span>Detalle de Transacciones (Haz clic en una fila para ver el desglose)</span>
                   </h2>
+                  {reporte.ventas.length > 0 && (
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      onClick={descargarPdf}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '11px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        color: 'var(--primary)',
+                      }}
+                    >
+                      <IconDownload style={{ width: '12px', height: '12px' }} />
+                      <span>Exportar PDF</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className={styles.tableScroll}>
@@ -452,20 +455,26 @@ function VentaFila({
   empleado: string | null;
   metodoPago: string | null;
   total: number;
-  items: Array<{ producto: string | null; cantidad: number; precio: number }>;
+  items: { producto: string | null; cantidad: number; precio: number }[];
 }) {
-  const [abierta, setAbierta] = useState(false);
+  const [abierto, setAbierto] = useState(false);
 
   return (
     <>
-      <tr className={styles.rowClickable} onClick={() => setAbierta((v) => !v)}>
-        <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {abierta ? (
-            <IconChevronDown style={{ width: '12px', height: '12px' }} />
-          ) : (
-            <IconChevronRight style={{ width: '12px', height: '12px' }} />
-          )}
-          <span>{folio}</span>
+      <tr
+        onClick={() => setAbierto(!abierto)}
+        style={{ cursor: 'pointer' }}
+        title="Haz clic para ver los productos de esta venta"
+      >
+        <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            {abierto ? (
+              <IconChevronDown style={{ width: '12px', height: '12px' }} />
+            ) : (
+              <IconChevronRight style={{ width: '12px', height: '12px' }} />
+            )}
+            <span>{folio}</span>
+          </span>
         </td>
         <td className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
           {new Date(fecha).toLocaleString('es-MX')}
@@ -473,58 +482,56 @@ function VentaFila({
         <td>{sucursal ?? '—'}</td>
         <td>{empleado ?? '—'}</td>
         <td>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+          <span className={styles.paymentMethod}>
             {metodoPago === 'tarjeta' ? (
               <>
-                <IconCard style={{ color: 'var(--secondary)' }} />
+                <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
                 <span>Tarjeta</span>
               </>
             ) : (
               <>
-                <IconCash style={{ color: 'var(--success)' }} />
+                <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
                 <span>Efectivo</span>
               </>
             )}
           </span>
         </td>
         <td style={{ textAlign: 'center' }}>
-          <span style={{ background: 'var(--surface-container)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
+          <span className={styles.badgeItems}>
+            {items.reduce((s, it) => s + it.cantidad, 0)} {items.length === 1 ? 'ítem' : 'ítems'}
           </span>
         </td>
-        <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
+        <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-primary)' }}>
           {formatearDinero(total)}
         </td>
       </tr>
-      {abierta && (
-        <tr className={styles.detailRow}>
-          <td colSpan={7} className={styles.detailWrapper}>
-            {items.length === 0 ? (
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Sin detalle de ítems registrado.</span>
-            ) : (
-              <table className={styles.detailTable}>
-                <thead>
-                  <tr>
-                    <th>Producto / Modelo</th>
-                    <th style={{ textAlign: 'right' }}>Cantidad</th>
-                    <th style={{ textAlign: 'right' }}>Precio Unitario</th>
-                    <th style={{ textAlign: 'right' }}>Subtotal</th>
+
+      {abierto && (
+        <tr>
+          <td colSpan={7} style={{ background: 'var(--surface-container-low)', padding: '12px 24px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+              Productos en Folio {folio}:
+            </div>
+            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--outline-variant)' }}>
+                  <th style={{ textAlign: 'left', padding: '4px 0' }}>Producto / Batería</th>
+                  <th style={{ textAlign: 'center', padding: '4px 0' }}>Cantidad</th>
+                  <th style={{ textAlign: 'right', padding: '4px 0' }}>Precio Unitario</th>
+                  <th style={{ textAlign: 'right', padding: '4px 0' }}>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                    <td style={{ padding: '6px 0', fontWeight: 600 }}>{it.producto ?? 'Sin nombre'}</td>
+                    <td className="mono" style={{ textAlign: 'center', padding: '6px 0' }}>{it.cantidad}</td>
+                    <td className="mono" style={{ textAlign: 'right', padding: '6px 0' }}>{formatearDinero(it.precio)}</td>
+                    <td className="mono" style={{ textAlign: 'right', padding: '6px 0', fontWeight: 600 }}>{formatearDinero(it.cantidad * it.precio)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, i) => (
-                    <tr key={i}>
-                      <td><strong>{item.producto ?? '—'}</strong></td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{item.cantidad}</td>
-                      <td className="mono" style={{ textAlign: 'right' }}>{formatearDinero(item.precio)}</td>
-                      <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
-                        {formatearDinero(item.cantidad * item.precio)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+                ))}
+              </tbody>
+            </table>
           </td>
         </tr>
       )}
