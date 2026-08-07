@@ -10,7 +10,7 @@ import {
   type Producto,
   type Sucursal,
   actualizarMarca,
-  actualizarPrecio,
+  actualizarProducto,
   crearMarca,
   crearProducto,
   darDeBaja,
@@ -21,7 +21,6 @@ import {
   listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
-import { corregirSucursal, reabastecerInventario } from '@/lib/inventario';
 import {
   IconBolt,
   IconDashboard,
@@ -34,8 +33,6 @@ import {
   IconEdit,
   IconDelete,
   IconClose,
-  IconPriceTag,
-  IconTransfer,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
 
@@ -43,9 +40,7 @@ type ModalState =
   | { tipo: 'nuevaMarca' }
   | { tipo: 'editarMarca'; marca: Marca }
   | { tipo: 'nuevoProducto' }
-  | { tipo: 'precio'; producto: Producto }
-  | { tipo: 'reubicar'; producto: Producto }
-  | { tipo: 'reabastecer'; producto: Producto }
+  | { tipo: 'editarProducto'; producto: Producto }
   | null;
 
 function mensajeError(e: unknown): string {
@@ -178,14 +173,6 @@ function CatalogoAdmin() {
     );
   });
 
-  function obtenerSucursalInfo(sucId: string): { nombre: string; esMatriz: boolean } {
-    const suc = sucursales.find((s) => s.id === sucId);
-    return {
-      nombre: suc?.nombre ?? 'Tienda',
-      esMatriz: suc?.es_matriz ?? false,
-    };
-  }
-
   return (
     <div className={styles.layout}>
       {/* Sidebar Persistente */}
@@ -306,7 +293,7 @@ function CatalogoAdmin() {
             )}
           </section>
 
-          {/* Sección Principal: Catálogo de Productos a Ancho Completo */}
+          {/* Sección Principal: Catálogo Técnico de Productos */}
           <section className={styles.bentoCard}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>
@@ -348,7 +335,6 @@ function CatalogoAdmin() {
                       <th>Código de Barras</th>
                       <th style={{ textAlign: 'right' }}>Precio</th>
                       <th style={{ textAlign: 'right' }}>Stock Total</th>
-                      <th>Existencias por Tienda</th>
                       <th style={{ textAlign: 'center' }}>Requiere Casco</th>
                       <th style={{ textAlign: 'center' }}>Estado</th>
                       <th style={{ textAlign: 'center' }}>Acciones</th>
@@ -357,14 +343,13 @@ function CatalogoAdmin() {
                   <tbody>
                     {visibles.length === 0 && (
                       <tr>
-                        <td colSpan={9} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
                           No se encontraron productos que coincidan con la búsqueda.
                         </td>
                       </tr>
                     )}
                     {visibles.map((producto) => {
                       const totalExistencias = stockTotal(producto);
-                      const conStock = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
 
                       return (
                         <tr
@@ -386,28 +371,8 @@ function CatalogoAdmin() {
                           <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
                             {formatearDinero(producto.precio)}
                           </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
                             {totalExistencias}
-                          </td>
-                          <td>
-                            {conStock.length === 0 ? (
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin existencias</span>
-                            ) : (
-                              <div className={styles.stockBreakdownList}>
-                                {conStock.map((inv) => {
-                                  const info = obtenerSucursalInfo(inv.sucursal_id);
-                                  return (
-                                    <span
-                                      key={inv.sucursal_id}
-                                      className={`${styles.stockTag} ${info.esMatriz ? styles.stockTagMatriz : ''}`}
-                                    >
-                                      <span className={styles.stockTagSucursal}>{info.nombre}:</span>
-                                      <span className={styles.stockTagValue}>{inv.cantidad}</span>
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             {producto.requiere_casco ? 'Sí' : 'No'}
@@ -421,40 +386,15 @@ function CatalogoAdmin() {
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <div className={styles.itemActions}>
-                              {producto.activo && (
-                                <button
-                                  className={styles.btnPriceAction}
-                                  onClick={() => setModal({ tipo: 'reabastecer', producto })}
-                                  disabled={operando}
-                                  title="Ingresar más existencias recibidas de este producto"
-                                  style={{ background: 'rgba(46, 125, 50, 0.08)', color: 'var(--success)', borderColor: 'rgba(46, 125, 50, 0.25)' }}
-                                >
-                                  <IconAdd style={{ width: '12px', height: '12px' }} />
-                                  <span>+ Stock</span>
-                                </button>
-                              )}
-
                               <button
                                 className={styles.btnPriceAction}
-                                onClick={() => setModal({ tipo: 'precio', producto })}
+                                onClick={() => setModal({ tipo: 'editarProducto', producto })}
                                 disabled={operando || !producto.activo}
-                                title="Modificar precio de venta"
+                                title="Editar datos y precio del producto"
                               >
-                                <IconPriceTag style={{ width: '12px', height: '12px' }} />
-                                <span>Precio</span>
+                                <IconEdit style={{ width: '12px', height: '12px' }} />
+                                <span>Editar</span>
                               </button>
-
-                              {producto.activo && totalExistencias > 0 && sucursales.length > 1 && (
-                                <button
-                                  className={styles.btnRelocateAction}
-                                  onClick={() => setModal({ tipo: 'reubicar', producto })}
-                                  disabled={operando}
-                                  title="Corregir o reubicar sucursal de existencia"
-                                >
-                                  <IconTransfer style={{ width: '12px', height: '12px' }} />
-                                  <span>Reubicar</span>
-                                </button>
-                              )}
 
                               {producto.activo && (
                                 <button
@@ -513,33 +453,10 @@ function CatalogoAdmin() {
         />
       )}
 
-      {modal?.tipo === 'precio' && (
-        <PrecioModal
+      {modal?.tipo === 'editarProducto' && (
+        <EditarProductoModal
           producto={modal.producto}
-          onCerrar={() => setModal(null)}
-          onGuardado={async () => {
-            setModal(null);
-            await recargar();
-          }}
-        />
-      )}
-
-      {modal?.tipo === 'reubicar' && (
-        <ReubicarStockModal
-          producto={modal.producto}
-          sucursales={sucursales}
-          onCerrar={() => setModal(null)}
-          onGuardado={async () => {
-            setModal(null);
-            await recargar();
-          }}
-        />
-      )}
-
-      {modal?.tipo === 'reabastecer' && (
-        <ReabastecerProductoCatalogoModal
-          producto={modal.producto}
-          sucursales={sucursales}
+          marcas={marcas}
           onCerrar={() => setModal(null)}
           onGuardado={async () => {
             setModal(null);
@@ -755,7 +672,7 @@ function NuevoProductoModal({
       return;
     }
     if (!sucursalId) {
-      setError('Selecciona la sucursal de alta.');
+      setError('Selecciona la sucursal de alta inicial.');
       return;
     }
     const precioNum = Number(precio);
@@ -829,7 +746,7 @@ function NuevoProductoModal({
             >
               {sucursales.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.nombre} {s.es_matriz ? '(Matriz - Por defecto)' : ''}
+                  {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
                 </option>
               ))}
             </select>
@@ -902,108 +819,48 @@ function NuevoProductoModal({
   );
 }
 
-function PrecioModal({
+function EditarProductoModal({
   producto,
+  marcas,
   onCerrar,
   onGuardado,
 }: {
   producto: Producto;
+  marcas: Marca[];
   onCerrar: () => void;
   onGuardado: () => void | Promise<void>;
 }) {
+  const marcaActual = marcas.find((m) => m.nombre === producto.marcas?.nombre)?.id ?? marcas[0]?.id ?? '';
+
+  const [marcaId, setMarcaId] = useState(marcaActual);
+  const [modelo, setModelo] = useState(producto.modelo);
+  const [descripcion, setDescripcion] = useState(producto.descripcion ?? '');
   const [precio, setPrecio] = useState(String(producto.precio));
+  const [requiereCasco, setRequiereCasco] = useState(producto.requiere_casco);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
-    const pNum = Number(precio);
-    if (Number.isNaN(pNum) || pNum < 0) {
+    if (!modelo.trim()) {
+      setError('El modelo del producto es obligatorio.');
+      return;
+    }
+    const precioNum = Number(precio);
+    if (Number.isNaN(precioNum) || precioNum < 0) {
       setError('Ingresa un precio válido (mayor o igual a cero).');
       return;
     }
-    setGuardando(true);
-    setError(null);
-    try {
-      await actualizarPrecio(producto.id, pNum);
-      await onGuardado();
-    } catch (err) {
-      setError(mensajeError(err));
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <Modal titulo={`Modificar Precio: ${producto.modelo}`} onCerrar={onCerrar}>
-      <form className={styles.form} onSubmit={guardar}>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-          Precio actual:{' '}
-          <strong style={{ color: 'var(--primary)' }}>
-            {formatearDinero(producto.precio)}
-          </strong>
-        </p>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Nuevo Precio ($ MXN)</span>
-          <input
-            className={styles.input}
-            inputMode="decimal"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-            placeholder="0.00"
-            autoFocus
-          />
-        </label>
-        {error && <p className={styles.errorBanner}>{error}</p>}
-        <div className={styles.modalFooter}>
-          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-            Cancelar
-          </button>
-          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Actualizar Precio'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function ReubicarStockModal({
-  producto,
-  sucursales,
-  onCerrar,
-  onGuardado,
-}: {
-  producto: Producto;
-  sucursales: Sucursal[];
-  onCerrar: () => void;
-  onGuardado: () => void | Promise<void>;
-}) {
-  const existencias = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
-  const origenDefault = existencias[0]?.sucursal_id ?? sucursales[0]?.id ?? '';
-  const destinoDefault =
-    sucursales.find((s) => s.id !== origenDefault)?.id ?? sucursales[1]?.id ?? '';
-
-  const [origenId, setOrigenId] = useState(origenDefault);
-  const [destinoId, setDestinoId] = useState(destinoDefault);
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const existenciaOrigen = existencias.find((e) => e.sucursal_id === origenId);
-
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    if (origenId === destinoId) {
-      setError('La sucursal actual y la correcta deben ser distintas.');
-      return;
-    }
 
     setGuardando(true);
     setError(null);
     try {
-      await corregirSucursal({
-        producto_id: producto.id,
-        sucursal_origen_id: origenId,
-        sucursal_destino_id: destinoId,
+      await actualizarProducto(producto.id, {
+        marca_id: marcaId || undefined,
+        modelo: modelo.trim(),
+        descripcion: descripcion.trim() || undefined,
+        precio: precioNum,
+        requiere_casco: requiereCasco,
       });
       await onGuardado();
     } catch (err) {
@@ -1013,189 +870,75 @@ function ReubicarStockModal({
   }
 
   return (
-    <Modal titulo={`Corregir Sucursal: ${producto.modelo}`} onCerrar={onCerrar}>
+    <Modal titulo={`Editar Producto: ${producto.modelo}`} onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
-        <p className={styles.helperText}>
-          Usa esta opción si el producto fue dado de alta por error en una
-          sucursal equivocada. Se moverá <strong>toda su existencia</strong> a
-          la sucursal correcta sin registrar una transferencia (las
-          transferencias quedan para movimientos reales entre tiendas).
-        </p>
-
         <div className={styles.formRow}>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Ubicación Actual (Equivocada)</span>
+            <span className={styles.fieldLabel}>Marca</span>
             <select
               className={styles.select}
-              value={origenId}
-              onChange={(e) => {
-                const nuevoOrigen = e.target.value;
-                setOrigenId(nuevoOrigen);
-                if (destinoId === nuevoOrigen) {
-                  const otro =
-                    sucursales.find((s) => s.id !== nuevoOrigen)?.id ??
-                    sucursales[0]?.id ??
-                    '';
-                  setDestinoId(otro);
-                }
-              }}
+              value={marcaId}
+              onChange={(e) => setMarcaId(e.target.value)}
             >
-              {existencias.map((inv) => {
-                const suc = sucursales.find((s) => s.id === inv.sucursal_id);
-                return (
-                  <option key={inv.sucursal_id} value={inv.sucursal_id}>
-                    {suc?.nombre ?? 'Tienda'} ({inv.cantidad} en existencia)
-                  </option>
-                );
-              })}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Sucursal Correcta (Destino)</span>
-            <select
-              className={styles.select}
-              value={destinoId}
-              onChange={(e) => setDestinoId(e.target.value)}
-            >
-              {sucursales
-                .filter((s) => s.id !== origenId)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
-                  </option>
-                ))}
-            </select>
-          </label>
-        </div>
-
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
-          Existencia que se moverá:{' '}
-          <strong className="mono" style={{ color: 'var(--primary)' }}>
-            {existenciaOrigen?.cantidad ?? 0} unidades
-          </strong>
-          {' '}· cascos disponibles:{' '}
-          <strong className="mono">
-            {existenciaOrigen?.cascos_disponibles ?? 0}
-          </strong>
-        </p>
-
-        {error && <p className={styles.errorBanner}>{error}</p>}
-
-        <div className={styles.modalFooter}>
-          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-            Cancelar
-          </button>
-          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Corrigiendo…' : 'Mover a Sucursal Correcta'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function ReabastecerProductoCatalogoModal({
-  producto,
-  sucursales,
-  onCerrar,
-  onGuardado,
-}: {
-  producto: Producto;
-  sucursales: Sucursal[];
-  onCerrar: () => void;
-  onGuardado: () => void | Promise<void>;
-}) {
-  const matrizDefault = sucursales.find((s) => s.es_matriz)?.id ?? sucursales[0]?.id ?? '';
-  const [sucursalId, setSucursalId] = useState(matrizDefault);
-  const [cantidad, setCantidad] = useState('10');
-  const [nota, setNota] = useState('');
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const stockActualEnTienda = (producto.inventario ?? []).find(
-    (inv) => inv.sucursal_id === sucursalId,
-  )?.cantidad ?? 0;
-
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    const cantNum = Number(cantidad);
-    if (Number.isNaN(cantNum) || cantNum <= 0) {
-      setError('Ingresa una cantidad válida mayor a cero.');
-      return;
-    }
-    if (!sucursalId) {
-      setError('Selecciona la sucursal de destino.');
-      return;
-    }
-
-    setGuardando(true);
-    setError(null);
-    try {
-      await reabastecerInventario({
-        producto_id: producto.id,
-        sucursal_id: sucursalId,
-        cantidad: cantNum,
-        nota: nota.trim() || undefined,
-      });
-      await onGuardado();
-    } catch (err) {
-      setError(mensajeError(err));
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <Modal titulo={`Reabastecer: ${producto.modelo}`} onCerrar={onCerrar}>
-      <form className={styles.form} onSubmit={guardar}>
-        <p className={styles.helperText}>
-          Ingresa las unidades recibidas para sumar existencias físicas en la tienda seleccionada.
-        </p>
-
-        <div className={styles.formRow}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Sucursal Receptora</span>
-            <select
-              className={styles.select}
-              value={sucursalId}
-              onChange={(e) => setSucursalId(e.target.value)}
-            >
-              {sucursales.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+              {marcas.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Cantidad a Sumar (+ Unidades)</span>
+            <span className={styles.fieldLabel}>Modelo</span>
             <input
               className={styles.input}
-              inputMode="numeric"
-              value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
-              placeholder="10"
+              value={modelo}
+              onChange={(e) => setModelo(e.target.value)}
               autoFocus
             />
           </label>
         </div>
 
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
-          Existencia actual en esta tienda:{' '}
-          <strong className="mono" style={{ color: 'var(--primary)' }}>
-            {stockActualEnTienda} unidades
-          </strong>
-        </p>
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio de Venta ($ MXN)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio}
+              onChange={(e) => setPrecio(e.target.value)}
+              placeholder="0.00"
+            />
+          </label>
+
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Código de Barras</span>
+            <input
+              className={styles.input}
+              value={producto.codigo_barras}
+              disabled
+              style={{ opacity: 0.7, background: 'var(--surface-container-low)' }}
+            />
+          </div>
+        </div>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Nota / Folio de Compra o Factura (opcional)</span>
+          <span className={styles.fieldLabel}>Descripción Técnica (opcional)</span>
           <input
             className={styles.input}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="Ej. Factura Proveedor LTH #4928"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Amperaje, bornes, medidas, garantía…"
           />
+        </label>
+
+        <label className={styles.checkboxField}>
+          <input
+            type="checkbox"
+            checked={requiereCasco}
+            onChange={(e) => setRequiereCasco(e.target.checked)}
+          />
+          <span>Requiere entregar casco/batería vieja a cambio</span>
         </label>
 
         {error && <p className={styles.errorBanner}>{error}</p>}
@@ -1205,7 +948,7 @@ function ReabastecerProductoCatalogoModal({
             Cancelar
           </button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Guardando…' : '+ Registrar Entrada de Stock'}
+            {guardando ? 'Guardando…' : 'Guardar Cambios'}
           </button>
         </div>
       </form>

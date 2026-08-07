@@ -28,7 +28,7 @@ export interface Producto {
   codigo_barras: string;
   codigo_barras_origen: string;
   activo: boolean;
-  marcas: { nombre: string } | null;
+  marcas: { id?: string; nombre: string } | null;
   inventario: Existencia[];
 }
 
@@ -41,6 +41,14 @@ export interface NuevoProductoInput {
   codigo_barras_fabrica?: string;
   sucursal_id?: string;
   cantidad_inicial?: number;
+}
+
+export interface EditarProductoInput {
+  marca_id?: string;
+  modelo?: string;
+  descripcion?: string;
+  precio?: number;
+  requiere_casco?: boolean;
 }
 
 export interface NuevaMarcaInput {
@@ -85,6 +93,13 @@ export function crearProducto(input: NuevoProductoInput) {
   return api<Producto>('/catalog/productos', {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+}
+
+export function actualizarProducto(id: string, cambios: EditarProductoInput) {
+  return api<Producto>(`/catalog/productos/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(cambios),
   });
 }
 
