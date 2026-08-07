@@ -46,3 +46,17 @@ export function transferirInventario(input: TransferenciaInput) {
 export function listarTransferencias() {
   return api<Transferencia[]>('/inventory/transferencias');
 }
+
+export interface ReabastecerInput {
+  producto_id: string;
+  sucursal_id: string;
+  cantidad: number;
+  nota?: string;
+}
+
+export function reabastecerInventario(input: ReabastecerInput) {
+  return api<unknown>('/inventory/reabastecer', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}

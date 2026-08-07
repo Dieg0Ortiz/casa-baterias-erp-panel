@@ -21,7 +21,7 @@ import {
   listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
-import { transferirInventario } from '@/lib/inventario';
+import { reabastecerInventario, transferirInventario } from '@/lib/inventario';
 import {
   IconBolt,
   IconDashboard,
@@ -45,6 +45,7 @@ type ModalState =
   | { tipo: 'nuevoProducto' }
   | { tipo: 'precio'; producto: Producto }
   | { tipo: 'reubicar'; producto: Producto }
+  | { tipo: 'reabastecer'; producto: Producto }
   | null;
 
 function mensajeError(e: unknown): string {
@@ -420,6 +421,19 @@ function CatalogoAdmin() {
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <div className={styles.itemActions}>
+                              {producto.activo && (
+                                <button
+                                  className={styles.btnPriceAction}
+                                  onClick={() => setModal({ tipo: 'reabastecer', producto })}
+                                  disabled={operando}
+                                  title="Ingresar más existencias recibidas de este producto"
+                                  style={{ background: 'rgba(46, 125, 50, 0.08)', color: 'var(--success)', borderColor: 'rgba(46, 125, 50, 0.25)' }}
+                                >
+                                  <IconAdd style={{ width: '12px', height: '12px' }} />
+                                  <span>+ Stock</span>
+                                </button>
+                              )}
+
                               <button
                                 className={styles.btnPriceAction}
                                 onClick={() => setModal({ tipo: 'precio', producto })}
@@ -512,6 +526,18 @@ function CatalogoAdmin() {
 
       {modal?.tipo === 'reubicar' && (
         <ReubicarStockModal
+          producto={modal.producto}
+          sucursales={sucursales}
+          onCerrar={() => setModal(null)}
+          onGuardado={async () => {
+            setModal(null);
+            await recargar();
+          }}
+        />
+      )}
+
+      {modal?.tipo === 'reabastecer' && (
+        <ReabastecerProductoCatalogoModal
           producto={modal.producto}
           sucursales={sucursales}
           onCerrar={() => setModal(null)}
@@ -1067,6 +1093,124 @@ function ReubicarStockModal({
           </button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
             {guardando ? 'Reubicando…' : 'Corregir Ubicación'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ReabastecerProductoCatalogoModal({
+  producto,
+  sucursales,
+  onCerrar,
+  onGuardado,
+}: {
+  producto: Producto;
+  sucursales: Sucursal[];
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const matrizDefault = sucursales.find((s) => s.es_matriz)?.id ?? sucursales[0]?.id ?? '';
+  const [sucursalId, setSucursalId] = useState(matrizDefault);
+  const [cantidad, setCantidad] = useState('10');
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const stockActualEnTienda = (producto.inventario ?? []).find(
+    (inv) => inv.sucursal_id === sucursalId,
+  )?.cantidad ?? 0;
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    const cantNum = Number(cantidad);
+    if (Number.isNaN(cantNum) || cantNum <= 0) {
+      setError('Ingresa una cantidad válida mayor a cero.');
+      return;
+    }
+    if (!sucursalId) {
+      setError('Selecciona la sucursal de destino.');
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await reabastecerInventario({
+        producto_id: producto.id,
+        sucursal_id: sucursalId,
+        cantidad: cantNum,
+        nota: nota.trim() || undefined,
+      });
+      await onGuardado();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo={`Reabastecer: ${producto.modelo}`} onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <p className={styles.helperText}>
+          Ingresa las unidades recibidas para sumar existencias físicas en la tienda seleccionada.
+        </p>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal Receptora</span>
+            <select
+              className={styles.select}
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+            >
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Cantidad a Sumar (+ Unidades)</span>
+            <input
+              className={styles.input}
+              inputMode="numeric"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              placeholder="10"
+              autoFocus
+            />
+          </label>
+        </div>
+
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
+          Existencia actual en esta tienda:{' '}
+          <strong className="mono" style={{ color: 'var(--primary)' }}>
+            {stockActualEnTienda} unidades
+          </strong>
+        </p>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nota / Folio de Compra o Factura (opcional)</span>
+          <input
+            className={styles.input}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej. Factura Proveedor LTH #4928"
+          />
+        </label>
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : '+ Registrar Entrada de Stock'}
           </button>
         </div>
       </form>

@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
-import { formatearDinero, listarSucursales } from '@/lib/catalogo';
+import { type Producto, formatearDinero, listarProductos, listarSucursales } from '@/lib/catalogo';
 import {
   type ItemInventario,
   type Transferencia,
   listarInventario,
   listarTransferencias,
+  reabastecerInventario,
   transferirInventario,
 } from '@/lib/inventario';
 import {
@@ -22,6 +23,7 @@ import {
   IconLogout,
   IconTransfer,
   IconClose,
+  IconAdd,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
@@ -68,23 +70,29 @@ export default function InventarioPage() {
 
 function InventarioAdmin() {
   const router = useRouter();
-  const [sucursales, setSucursales] = useState<{ id: string; nombre: string }[]>(
+  const [sucursales, setSucursales] = useState<{ id: string; nombre: string; es_matriz?: boolean }[]>(
     [],
   );
+  const [catalogo, setCatalogo] = useState<Producto[]>([]);
   const [sucursalId, setSucursalId] = useState('');
   const [items, setItems] = useState<ItemInventario[]>([]);
   const [transferencias, setTransferencias] = useState<Transferencia[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [modal, setModal] = useState(false);
+  const [modalTransf, setModalTransf] = useState(false);
+  const [modalReabastecer, setModalReabastecer] = useState(false);
 
   useEffect(() => {
     let activo = true;
     (async () => {
       try {
-        const suc = await listarSucursales();
+        const [suc, prods] = await Promise.all([
+          listarSucursales(),
+          listarProductos(),
+        ]);
         if (!activo) return;
         setSucursales(suc);
+        setCatalogo(prods.filter((p) => p.activo));
       } catch (e) {
         if (activo) setError(mensajeError(e));
       }
@@ -185,7 +193,7 @@ function InventarioAdmin() {
             </div>
           )}
 
-          {/* Barra de Filtro de Sucursal */}
+          {/* Barra de Filtro y Acciones de Inventario */}
           <section className={styles.filterBar}>
             <div className={styles.filterControls}>
               <span className={styles.fieldLabel}>Filtrar Tienda:</span>
@@ -211,17 +219,29 @@ function InventarioAdmin() {
               >
                 Actualizar
               </button>
+
               <button
                 className={styles.btnPrimary}
-                onClick={() => setModal(true)}
+                onClick={() => setModalReabastecer(true)}
+                disabled={cargando || catalogo.length === 0}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Agregar más existencias de un producto existente"
+              >
+                <IconAdd style={{ width: '14px', height: '14px' }} />
+                <span>+ Entrada de Inventario</span>
+              </button>
+
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalTransf(true)}
                 disabled={cargando || sucursales.length < 2}
                 title={
                   sucursales.length < 2
                     ? 'Se necesitan al menos dos sucursales para transferir'
-                    : undefined
+                    : 'Transferir stock entre tiendas'
                 }
               >
-                + Nueva Transferencia
+                Transferir entre Sucursales
               </button>
             </div>
           </section>
@@ -351,13 +371,27 @@ function InventarioAdmin() {
         </main>
       </div>
 
+      {/* Modal de Reabastecimiento / Entrada de Stock */}
+      {modalReabastecer && (
+        <ReabastecerModal
+          sucursales={sucursales}
+          catalogo={catalogo}
+          sucursalActualId={sucursalId}
+          onCerrar={() => setModalReabastecer(false)}
+          onGuardado={async () => {
+            setModalReabastecer(false);
+            await cargar(sucursalId);
+          }}
+        />
+      )}
+
       {/* Modal de Transferencia */}
-      {modal && (
+      {modalTransf && (
         <TransferenciaModal
           sucursales={sucursales}
-          onCerrar={() => setModal(false)}
+          onCerrar={() => setModalTransf(false)}
           onHecha={async () => {
-            setModal(false);
+            setModalTransf(false);
             await cargar(sucursalId);
           }}
         />
@@ -392,6 +426,146 @@ function Modal({
         {children}
       </div>
     </div>
+  );
+}
+
+function ReabastecerModal({
+  sucursales,
+  catalogo,
+  sucursalActualId,
+  onCerrar,
+  onGuardado,
+}: {
+  sucursales: { id: string; nombre: string; es_matriz?: boolean }[];
+  catalogo: Producto[];
+  sucursalActualId: string;
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const [sucursalId, setSucursalId] = useState(
+    sucursalActualId || sucursales[0]?.id || '',
+  );
+  const [productoId, setProductoId] = useState(catalogo[0]?.id || '');
+  const [cantidad, setCantidad] = useState('1');
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const productoSeleccionado = catalogo.find((p) => p.id === productoId);
+  const stockEnSucursal = (productoSeleccionado?.inventario ?? []).find(
+    (inv) => inv.sucursal_id === sucursalId,
+  )?.cantidad ?? 0;
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (!sucursalId) {
+      setError('Selecciona la sucursal de destino.');
+      return;
+    }
+    if (!productoId) {
+      setError('Selecciona el producto a reabastecer.');
+      return;
+    }
+    const cantNum = Number(cantidad);
+    if (Number.isNaN(cantNum) || cantNum <= 0) {
+      setError('Ingresa una cantidad válida mayor a cero.');
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await reabastecerInventario({
+        producto_id: productoId,
+        sucursal_id: sucursalId,
+        cantidad: cantNum,
+        nota: nota.trim() || undefined,
+      });
+      await onGuardado();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo="Entrada de Inventario / Reabastecimiento" onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal Receptora</span>
+            <select
+              className={styles.input}
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+            >
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Cantidad a Ingresar (+ Unidades)</span>
+            <input
+              className={styles.input}
+              inputMode="numeric"
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              placeholder="10"
+              autoFocus
+            />
+          </label>
+        </div>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Producto / Batería</span>
+          <select
+            className={styles.input}
+            value={productoId}
+            onChange={(e) => setProductoId(e.target.value)}
+          >
+            {catalogo.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.modelo} — {p.marcas?.nombre ?? 'Sin Marca'} ({formatearDinero(p.precio)})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {productoSeleccionado && (
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
+            Existencia actual en esta tienda:{' '}
+            <strong className="mono" style={{ color: 'var(--primary)' }}>
+              {stockEnSucursal} unidades
+            </strong>
+          </p>
+        )}
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nota / Folio de Compra (opcional)</span>
+          <input
+            className={styles.input}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej. Factura Proveedor LTH #4928"
+          />
+        </label>
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimary} disabled={guardando}>
+            {guardando ? 'Ingresando…' : '+ Registrar Entrada de Stock'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
