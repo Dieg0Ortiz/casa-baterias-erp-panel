@@ -177,8 +177,12 @@ function CatalogoAdmin() {
     );
   });
 
-  function obtenerNombreSucursal(sucId: string): string {
-    return sucursales.find((s) => s.id === sucId)?.nombre ?? 'Tienda';
+  function obtenerSucursalInfo(sucId: string): { nombre: string; esMatriz: boolean } {
+    const suc = sucursales.find((s) => s.id === sucId);
+    return {
+      nombre: suc?.nombre ?? 'Tienda',
+      esMatriz: suc?.es_matriz ?? false,
+    };
   }
 
   return (
@@ -240,209 +244,224 @@ function CatalogoAdmin() {
             </div>
           )}
 
-          <div className={styles.catalogGrid}>
-            {/* Columna Izquierda: Marcas */}
-            <section className={styles.bentoCard}>
-              <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Marcas Registradas</h2>
-                <button
-                  className={styles.btnPrimarySm}
-                  onClick={() => setModal({ tipo: 'nuevaMarca' })}
-                  disabled={operando}
-                >
-                  <IconAdd style={{ width: '14px', height: '14px' }} />
-                  <span>Nueva</span>
-                </button>
-              </div>
+          {/* Sección Superior: Marcas Registradas en Card Horizontal */}
+          <section className={styles.bentoCard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>
+                <IconCatalog style={{ color: 'var(--primary)' }} />
+                <span>Marcas Registradas ({marcas.length})</span>
+              </h2>
+              <button
+                className={styles.btnPrimarySm}
+                onClick={() => setModal({ tipo: 'nuevaMarca' })}
+                disabled={operando}
+              >
+                <IconAdd style={{ width: '14px', height: '14px' }} />
+                <span>Nueva Marca</span>
+              </button>
+            </div>
 
+            {cargando ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                Cargando marcas…
+              </div>
+            ) : marcas.length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                No hay marcas registradas. Haz clic en «Nueva Marca» para agregar la primera.
+              </div>
+            ) : (
+              <div className={styles.brandsGrid}>
+                {marcas.map((marca) => (
+                  <div key={marca.id} className={styles.brandChip}>
+                    <div>
+                      <div className={styles.brandName}>{marca.nombre}</div>
+                      {marca.descripcion && (
+                        <div className={styles.brandDesc} title={marca.descripcion}>
+                          {marca.descripcion}
+                        </div>
+                      )}
+                    </div>
+                    <div className={styles.brandActions}>
+                      <button
+                        className={styles.brandActionBtn}
+                        onClick={() => setModal({ tipo: 'editarMarca', marca })}
+                        disabled={operando}
+                        title="Editar marca"
+                      >
+                        <IconEdit style={{ width: '14px', height: '14px' }} />
+                      </button>
+                      <button
+                        className={styles.brandActionBtnDanger}
+                        onClick={() => void eliminar(marca)}
+                        disabled={operando}
+                        title="Eliminar marca"
+                      >
+                        <IconDelete style={{ width: '14px', height: '14px' }} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Sección Principal: Catálogo de Productos a Ancho Completo */}
+          <section className={styles.bentoCard}>
+            <div className={styles.cardHeader}>
+              <h2 className={styles.cardTitle}>
+                <IconInventory style={{ color: 'var(--primary)' }} />
+                <span>Catálogo General de Baterías y Productos ({productos.length})</span>
+              </h2>
+              <button
+                className={styles.btnPrimarySm}
+                onClick={() => setModal({ tipo: 'nuevoProducto' })}
+                disabled={operando || marcas.length === 0}
+                title={marcas.length === 0 ? 'Registra una marca primero' : undefined}
+              >
+                <IconAdd style={{ width: '14px', height: '14px' }} />
+                <span>Nuevo Producto</span>
+              </button>
+            </div>
+
+            <div className={styles.toolbar}>
+              <span style={{ display: 'flex', color: 'var(--text-muted)' }}><IconSearch /></span>
+              <input
+                className={styles.searchInput}
+                placeholder="Buscar producto por modelo, marca o código de barras…"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.tableScroll}>
               {cargando ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  Cargando marcas…
-                </div>
-              ) : marcas.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                  No hay marcas registradas.
+                <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  Cargando catálogo…
                 </div>
               ) : (
-                <ul className={styles.brandList}>
-                  {marcas.map((marca) => (
-                    <li key={marca.id} className={styles.brandItem}>
-                      <div>
-                        <div className={styles.brandName}>{marca.nombre}</div>
-                        {marca.descripcion && <p className={styles.brandDesc}>{marca.descripcion}</p>}
-                      </div>
-                      <div className={styles.itemActions}>
-                        <button
-                          className={styles.actionBtn}
-                          onClick={() => setModal({ tipo: 'editarMarca', marca })}
-                          disabled={operando}
-                          title="Editar marca"
-                        >
-                          <IconEdit />
-                        </button>
-                        <button
-                          className={styles.btnDeleteAction}
-                          onClick={() => void eliminar(marca)}
-                          disabled={operando}
-                          title="Eliminar marca"
-                        >
-                          <IconDelete />
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            {/* Columna Derecha: Productos */}
-            <section className={styles.bentoCard}>
-              <div className={styles.cardHeader}>
-                <h2 className={styles.cardTitle}>Catálogo de Baterías y Productos</h2>
-                <button
-                  className={styles.btnPrimarySm}
-                  onClick={() => setModal({ tipo: 'nuevoProducto' })}
-                  disabled={operando || marcas.length === 0}
-                  title={marcas.length === 0 ? 'Registra una marca primero' : undefined}
-                >
-                  <IconAdd style={{ width: '14px', height: '14px' }} />
-                  <span>Nuevo Producto</span>
-                </button>
-              </div>
-
-              <div className={styles.toolbar}>
-                <span style={{ display: 'flex', color: 'var(--text-muted)' }}><IconSearch /></span>
-                <input
-                  className={styles.searchInput}
-                  placeholder="Buscar producto por modelo o código de barras…"
-                  value={filtro}
-                  onChange={(e) => setFiltro(e.target.value)}
-                />
-              </div>
-
-              <div className={styles.tableScroll}>
-                {cargando ? (
-                  <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                    Cargando catálogo…
-                  </div>
-                ) : (
-                  <table className={styles.table}>
-                    <thead>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Modelo</th>
+                      <th>Marca</th>
+                      <th>Código de Barras</th>
+                      <th style={{ textAlign: 'right' }}>Precio</th>
+                      <th style={{ textAlign: 'right' }}>Stock Total</th>
+                      <th>Existencias por Tienda</th>
+                      <th style={{ textAlign: 'center' }}>Requiere Casco</th>
+                      <th style={{ textAlign: 'center' }}>Estado</th>
+                      <th style={{ textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibles.length === 0 && (
                       <tr>
-                        <th>Modelo</th>
-                        <th>Marca</th>
-                        <th>Código de Barras</th>
-                        <th style={{ textAlign: 'right' }}>Precio</th>
-                        <th style={{ textAlign: 'right' }}>Stock Total</th>
-                        <th>Existencias por Tienda</th>
-                        <th style={{ textAlign: 'center' }}>Requiere Casco</th>
-                        <th style={{ textAlign: 'center' }}>Estado</th>
-                        <th style={{ textAlign: 'center' }}>Acciones</th>
+                        <td colSpan={9} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No se encontraron productos que coincidan con la búsqueda.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {visibles.length === 0 && (
-                        <tr>
-                          <td colSpan={9} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                            No se encontraron productos coincidentes.
+                    )}
+                    {visibles.map((producto) => {
+                      const totalExistencias = stockTotal(producto);
+                      const conStock = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
+
+                      return (
+                        <tr
+                          key={producto.id}
+                          className={producto.activo ? undefined : styles.rowInactive}
+                        >
+                          <td>
+                            <strong>{producto.modelo}</strong>
+                            {producto.descripcion && (
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                {producto.descripcion}
+                              </div>
+                            )}
+                          </td>
+                          <td>{producto.marcas?.nombre ?? '—'}</td>
+                          <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                            {producto.codigo_barras}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
+                            {formatearDinero(producto.precio)}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                            {totalExistencias}
+                          </td>
+                          <td>
+                            {conStock.length === 0 ? (
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin existencias</span>
+                            ) : (
+                              <div className={styles.stockBreakdownList}>
+                                {conStock.map((inv) => {
+                                  const info = obtenerSucursalInfo(inv.sucursal_id);
+                                  return (
+                                    <span
+                                      key={inv.sucursal_id}
+                                      className={`${styles.stockTag} ${info.esMatriz ? styles.stockTagMatriz : ''}`}
+                                    >
+                                      <span className={styles.stockTagSucursal}>{info.nombre}:</span>
+                                      <span className={styles.stockTagValue}>{inv.cantidad}</span>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {producto.requiere_casco ? 'Sí' : 'No'}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {producto.activo ? (
+                              <span className={styles.badgeActivo}>Activo</span>
+                            ) : (
+                              <span className={styles.badgeBaja}>Baja</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div className={styles.itemActions}>
+                              <button
+                                className={styles.btnPriceAction}
+                                onClick={() => setModal({ tipo: 'precio', producto })}
+                                disabled={operando || !producto.activo}
+                                title="Modificar precio de venta"
+                              >
+                                <IconPriceTag style={{ width: '12px', height: '12px' }} />
+                                <span>Precio</span>
+                              </button>
+
+                              {producto.activo && totalExistencias > 0 && sucursales.length > 1 && (
+                                <button
+                                  className={styles.btnRelocateAction}
+                                  onClick={() => setModal({ tipo: 'reubicar', producto })}
+                                  disabled={operando}
+                                  title="Corregir o reubicar sucursal de existencia"
+                                >
+                                  <IconTransfer style={{ width: '12px', height: '12px' }} />
+                                  <span>Reubicar</span>
+                                </button>
+                              )}
+
+                              {producto.activo && (
+                                <button
+                                  className={styles.btnDeleteAction}
+                                  onClick={() => void bajarDeCatalogo(producto)}
+                                  disabled={operando}
+                                  title="Dar de baja producto del catálogo"
+                                >
+                                  <IconDelete style={{ width: '15px', height: '15px' }} />
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
-                      )}
-                      {visibles.map((producto) => {
-                        const totalExistencias = stockTotal(producto);
-                        const conStock = (producto.inventario ?? []).filter((i) => i.cantidad > 0);
-
-                        return (
-                          <tr
-                            key={producto.id}
-                            className={producto.activo ? undefined : styles.rowInactive}
-                          >
-                            <td>
-                              <strong>{producto.modelo}</strong>
-                              {producto.descripcion && (
-                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                  {producto.descripcion}
-                                </div>
-                              )}
-                            </td>
-                            <td>{producto.marcas?.nombre ?? '—'}</td>
-                            <td className="mono" style={{ color: 'var(--text-secondary)' }}>
-                              {producto.codigo_barras}
-                            </td>
-                            <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
-                              {formatearDinero(producto.precio)}
-                            </td>
-                            <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
-                              {totalExistencias}
-                            </td>
-                            <td>
-                              {conStock.length === 0 ? (
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Sin existencias</span>
-                              ) : (
-                                <div className={styles.stockBreakdown}>
-                                  {conStock.map((inv) => (
-                                    <span key={inv.sucursal_id} className={styles.stockBadge}>
-                                      <strong>{obtenerNombreSucursal(inv.sucursal_id)}:</strong> {inv.cantidad}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              {producto.requiere_casco ? 'Sí' : 'No'}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              {producto.activo ? (
-                                <span className={styles.badgeActivo}>Activo</span>
-                              ) : (
-                                <span className={styles.badgeBaja}>Baja</span>
-                              )}
-                            </td>
-                            <td style={{ textAlign: 'center' }}>
-                              <div className={styles.itemActions} style={{ justifyContent: 'center' }}>
-                                <button
-                                  className={styles.btnPriceAction}
-                                  onClick={() => setModal({ tipo: 'precio', producto })}
-                                  disabled={operando || !producto.activo}
-                                  title="Modificar precio de venta"
-                                >
-                                  <IconPriceTag style={{ width: '12px', height: '12px' }} />
-                                  <span>Precio</span>
-                                </button>
-
-                                {producto.activo && totalExistencias > 0 && sucursales.length > 1 && (
-                                  <button
-                                    className={styles.btnRelocateAction}
-                                    onClick={() => setModal({ tipo: 'reubicar', producto })}
-                                    disabled={operando}
-                                    title="Corregir o reubicar sucursal de existencia"
-                                  >
-                                    <IconTransfer style={{ width: '12px', height: '12px' }} />
-                                    <span>Reubicar</span>
-                                  </button>
-                                )}
-
-                                {producto.activo && (
-                                  <button
-                                    className={styles.btnDeleteAction}
-                                    onClick={() => void bajarDeCatalogo(producto)}
-                                    disabled={operando}
-                                    title="Dar de baja producto del catálogo"
-                                  >
-                                    <IconDelete style={{ width: '15px', height: '15px' }} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </section>
-          </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
         </main>
       </div>
 
