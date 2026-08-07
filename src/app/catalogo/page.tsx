@@ -21,6 +21,19 @@ import {
   listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
+import {
+  IconBolt,
+  IconDashboard,
+  IconCatalog,
+  IconInventory,
+  IconReports,
+  IconLogout,
+  IconSearch,
+  IconAdd,
+  IconEdit,
+  IconDelete,
+  IconClose,
+} from '@/components/Icons';
 import styles from './catalogo.module.css';
 
 function mensajeError(e: unknown): string {
@@ -176,7 +189,7 @@ function CatalogoAdmin() {
       {/* Sidebar Persistente */}
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span className={styles.brandIcon}>⚡</span>
+          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
           <div>
             <h1 className={styles.brandTitle}>Casa Baterías</h1>
             <p className={styles.brandSubtitle}>Control Central</p>
@@ -185,26 +198,26 @@ function CatalogoAdmin() {
 
         <nav className={styles.nav}>
           <Link href="/" className={styles.navItem}>
-            <span className={styles.navIcon}>📊</span>
+            <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
           <Link href="/catalogo" className={`${styles.navItem} ${styles.navItemActive}`}>
-            <span className={styles.navIcon}>📦</span>
+            <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
           <Link href="/inventario" className={styles.navItem}>
-            <span className={styles.navIcon}>🏭</span>
+            <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
           <Link href="/reportes" className={styles.navItem}>
-            <span className={styles.navIcon}>📋</span>
+            <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
         </nav>
 
         <div className={styles.sidebarFooter}>
           <button className={styles.logoutBtn} onClick={salir}>
-            <span>🚪</span>
+            <IconLogout />
             <span>Cerrar Sesión</span>
           </button>
         </div>
@@ -240,7 +253,8 @@ function CatalogoAdmin() {
                   onClick={() => setModal({ tipo: 'nuevaMarca' })}
                   disabled={operando}
                 >
-                  + Nueva
+                  <IconAdd style={{ width: '14px', height: '14px' }} />
+                  <span>Nueva</span>
                 </button>
               </div>
 
@@ -265,15 +279,17 @@ function CatalogoAdmin() {
                           className={styles.actionBtn}
                           onClick={() => setModal({ tipo: 'editarMarca', marca })}
                           disabled={operando}
+                          title="Editar marca"
                         >
-                          Editar
+                          <IconEdit />
                         </button>
                         <button
                           className={styles.actionBtnDanger}
                           onClick={() => void eliminar(marca)}
                           disabled={operando}
+                          title="Eliminar marca"
                         >
-                          Eliminar
+                          <IconDelete />
                         </button>
                       </div>
                     </li>
@@ -292,12 +308,13 @@ function CatalogoAdmin() {
                   disabled={operando || marcas.length === 0}
                   title={marcas.length === 0 ? 'Registra una marca primero' : undefined}
                 >
-                  + Nuevo Producto
+                  <IconAdd style={{ width: '14px', height: '14px' }} />
+                  <span>Nuevo Producto</span>
                 </button>
               </div>
 
               <div className={styles.toolbar}>
-                <span style={{ fontSize: '16px', color: 'var(--text-muted)' }}>🔍</span>
+                <span style={{ display: 'flex', color: 'var(--text-muted)' }}><IconSearch /></span>
                 <input
                   className={styles.searchInput}
                   placeholder="Buscar producto por modelo o código de barras…"
@@ -357,7 +374,7 @@ function CatalogoAdmin() {
                             {stockTotal(producto)}
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            {producto.requiere_casco ? '⚡ Sí' : 'No'}
+                            {producto.requiere_casco ? 'Sí' : 'No'}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             {producto.activo ? (
@@ -462,7 +479,7 @@ function Modal({
         <div className={styles.modalHeader}>
           <h3>{titulo}</h3>
           <button className={styles.closeBtn} onClick={onCerrar} aria-label="Cerrar">
-            ✕
+            <IconClose />
           </button>
         </div>
         {children}

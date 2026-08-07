@@ -13,6 +13,16 @@ import {
   listarTransferencias,
   transferirInventario,
 } from '@/lib/inventario';
+import {
+  IconBolt,
+  IconDashboard,
+  IconCatalog,
+  IconInventory,
+  IconReports,
+  IconLogout,
+  IconTransfer,
+  IconClose,
+} from '@/components/Icons';
 import styles from './inventario.module.css';
 
 function mensajeError(e: unknown): string {
@@ -121,7 +131,7 @@ function InventarioAdmin() {
       {/* Sidebar Persistente */}
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span className={styles.brandIcon}>⚡</span>
+          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
           <div>
             <h1 className={styles.brandTitle}>Casa Baterías</h1>
             <p className={styles.brandSubtitle}>Control Central</p>
@@ -130,26 +140,26 @@ function InventarioAdmin() {
 
         <nav className={styles.nav}>
           <Link href="/" className={styles.navItem}>
-            <span className={styles.navIcon}>📊</span>
+            <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
           <Link href="/catalogo" className={styles.navItem}>
-            <span className={styles.navIcon}>📦</span>
+            <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
           <Link href="/inventario" className={`${styles.navItem} ${styles.navItemActive}`}>
-            <span className={styles.navIcon}>🏭</span>
+            <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
           <Link href="/reportes" className={styles.navItem}>
-            <span className={styles.navIcon}>📋</span>
+            <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
         </nav>
 
         <div className={styles.sidebarFooter}>
           <button className={styles.logoutBtn} onClick={salir}>
-            <span>🚪</span>
+            <IconLogout />
             <span>Cerrar Sesión</span>
           </button>
         </div>
@@ -221,7 +231,7 @@ function InventarioAdmin() {
             <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Unidades Físicas ({nombreSucursal})</span>
-                <span style={{ fontSize: '18px' }}>📦</span>
+                <IconInventory style={{ color: 'var(--primary)' }} />
               </div>
               <div className={`${styles.statValue} mono`}>{totalUnidades}</div>
             </div>
@@ -229,7 +239,7 @@ function InventarioAdmin() {
             <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Cascos Disponibles ({nombreSucursal})</span>
-                <span style={{ fontSize: '18px' }}>⚡</span>
+                <IconBolt style={{ color: 'var(--secondary)' }} />
               </div>
               <div className={`${styles.statValue} mono`} style={{ color: 'var(--primary)' }}>
                 {totalCascos}
@@ -241,7 +251,7 @@ function InventarioAdmin() {
           <section className={styles.bentoCard}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>
-                <span>📦</span>
+                <IconInventory style={{ color: 'var(--primary)' }} />
                 <span>Existencias en {nombreSucursal}</span>
               </h2>
             </div>
@@ -275,7 +285,7 @@ function InventarioAdmin() {
                           {formatearDinero(item.precio)}
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          {item.requiere_casco ? '⚡ Sí' : 'No'}
+                          {item.requiere_casco ? 'Sí' : 'No'}
                         </td>
                         <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
                           {item.cantidad}
@@ -295,7 +305,7 @@ function InventarioAdmin() {
           <section className={styles.bentoCard}>
             <div className={styles.cardHeader}>
               <h2 className={styles.cardTitle}>
-                <span>🔄</span>
+                <IconTransfer style={{ color: 'var(--primary)' }} />
                 <span>Historial de Transferencias entre Sucursales</span>
               </h2>
             </div>
@@ -376,7 +386,7 @@ function Modal({
         <div className={styles.modalHeader}>
           <h3>{titulo}</h3>
           <button className={styles.closeBtn} onClick={onCerrar} aria-label="Cerrar">
-            ✕
+            <IconClose />
           </button>
         </div>
         {children}

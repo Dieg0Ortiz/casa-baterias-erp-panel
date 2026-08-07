@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { login } from '@/lib/auth';
 import { ApiError } from '@/lib/api';
+import { IconBolt } from '@/components/Icons';
 import styles from './login.module.css';
 
 export default function LoginPage() {
@@ -40,7 +41,9 @@ export default function LoginPage() {
     <div className={styles.page}>
       <form className={styles.card} onSubmit={entrar}>
         <div className={styles.brand}>
-          <div className={styles.brandIconWrapper}>⚡</div>
+          <div className={styles.brandIconWrapper}>
+            <IconBolt style={{ width: '24px', height: '24px' }} />
+          </div>
           <h1 className={styles.brandTitle}>Casa Baterías</h1>
           <p className={styles.brandSubtitle}>Panel de administración central</p>
         </div>

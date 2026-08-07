@@ -18,6 +18,19 @@ import {
   listarProductos,
   listarSucursales,
 } from '@/lib/catalogo';
+import {
+  IconBolt,
+  IconDashboard,
+  IconCatalog,
+  IconInventory,
+  IconReports,
+  IconLogout,
+  IconDownload,
+  IconChevronRight,
+  IconChevronDown,
+  IconCard,
+  IconCash,
+} from '@/components/Icons';
 import styles from './reportes.module.css';
 
 function mensajeError(e: unknown): string {
@@ -159,7 +172,7 @@ function Reportes({ salir }: { salir: () => void }) {
       {/* Sidebar Persistente */}
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span className={styles.brandIcon}>⚡</span>
+          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
           <div>
             <h1 className={styles.brandTitle}>Casa Baterías</h1>
             <p className={styles.brandSubtitle}>Control Central</p>
@@ -168,26 +181,26 @@ function Reportes({ salir }: { salir: () => void }) {
 
         <nav className={styles.nav}>
           <Link href="/" className={styles.navItem}>
-            <span className={styles.navIcon}>📊</span>
+            <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
           <Link href="/catalogo" className={styles.navItem}>
-            <span className={styles.navIcon}>📦</span>
+            <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
           <Link href="/inventario" className={styles.navItem}>
-            <span className={styles.navIcon}>🏭</span>
+            <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
           <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`}>
-            <span className={styles.navIcon}>📋</span>
+            <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
         </nav>
 
         <div className={styles.sidebarFooter}>
           <button className={styles.logoutBtn} onClick={salir}>
-            <span>🚪</span>
+            <IconLogout />
             <span>Cerrar Sesión</span>
           </button>
         </div>
@@ -284,8 +297,13 @@ function Reportes({ salir }: { salir: () => void }) {
                   {cargando ? 'Consultando…' : 'Consultar'}
                 </button>
                 {reporte && reporte.ventas.length > 0 && (
-                  <button className={styles.btnSecondary} onClick={descargarCsv}>
-                    📥 CSV
+                  <button
+                    className={styles.btnSecondary}
+                    onClick={descargarCsv}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <IconDownload style={{ width: '14px', height: '14px' }} />
+                    <span>CSV</span>
                   </button>
                 )}
               </div>
@@ -323,7 +341,7 @@ function Reportes({ salir }: { salir: () => void }) {
               <section className={styles.bentoCard}>
                 <div className={styles.cardHeader}>
                   <h2 className={styles.cardTitle}>
-                    <span>📋</span>
+                    <IconReports style={{ color: 'var(--primary)' }} />
                     <span>Detalle de Transacciones (Haz clic en una fila para ver el desglose)</span>
                   </h2>
                 </div>
@@ -404,8 +422,13 @@ function VentaFila({
   return (
     <>
       <tr className={styles.rowClickable} onClick={() => setAbierta((v) => !v)}>
-        <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
-          {abierta ? '▾' : '▸'} {folio}
+        <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {abierta ? (
+            <IconChevronDown style={{ width: '12px', height: '12px' }} />
+          ) : (
+            <IconChevronRight style={{ width: '12px', height: '12px' }} />
+          )}
+          <span>{folio}</span>
         </td>
         <td className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
           {new Date(fecha).toLocaleString('es-MX')}
@@ -413,12 +436,22 @@ function VentaFila({
         <td>{sucursal ?? '—'}</td>
         <td>{empleado ?? '—'}</td>
         <td>
-          <span style={{ textTransform: 'capitalize' }}>
-            {metodoPago === 'tarjeta' ? '💳 Tarjeta' : '💵 Efectivo'}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+            {metodoPago === 'tarjeta' ? (
+              <>
+                <IconCard style={{ color: 'var(--secondary)' }} />
+                <span>Tarjeta</span>
+              </>
+            ) : (
+              <>
+                <IconCash style={{ color: 'var(--success)' }} />
+                <span>Efectivo</span>
+              </>
+            )}
           </span>
         </td>
         <td style={{ textAlign: 'center' }}>
-          <span style={{ background: 'var(--surface-container)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 600 }}>
+          <span style={{ background: 'var(--surface-container)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)' }}>
             {items.length} {items.length === 1 ? 'ítem' : 'ítems'}
           </span>
         </td>

@@ -10,6 +10,21 @@ import {
   obtenerDashboard,
 } from '@/lib/admin';
 import { formatearDinero } from '@/lib/catalogo';
+import {
+  IconBolt,
+  IconDashboard,
+  IconCatalog,
+  IconInventory,
+  IconReports,
+  IconLogout,
+  IconSales,
+  IconStore,
+  IconCashRegister,
+  IconReceipt,
+  IconArrowRight,
+  IconCard,
+  IconCash,
+} from '@/components/Icons';
 import styles from './home.module.css';
 
 function mensajeError(e: unknown): string {
@@ -102,7 +117,9 @@ function DashboardAdmin({
       {/* Sidebar Persistente */}
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <span className={styles.brandIcon}>⚡</span>
+          <div className={styles.brandIconWrapper}>
+            <IconBolt />
+          </div>
           <div>
             <h1 className={styles.brandTitle}>Casa Baterías</h1>
             <p className={styles.brandSubtitle}>Control Central</p>
@@ -111,26 +128,26 @@ function DashboardAdmin({
 
         <nav className={styles.nav}>
           <Link href="/" className={`${styles.navItem} ${styles.navItemActive}`}>
-            <span className={styles.navIcon}>📊</span>
+            <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
           <Link href="/catalogo" className={styles.navItem}>
-            <span className={styles.navIcon}>📦</span>
+            <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
           <Link href="/inventario" className={styles.navItem}>
-            <span className={styles.navIcon}>🏭</span>
+            <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
           <Link href="/reportes" className={styles.navItem}>
-            <span className={styles.navIcon}>📋</span>
+            <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
         </nav>
 
         <div className={styles.sidebarFooter}>
           <button className={styles.logoutBtn} onClick={salir}>
-            <span>🚪</span>
+            <IconLogout />
             <span>Cerrar Sesión</span>
           </button>
         </div>
@@ -175,7 +192,7 @@ function DashboardAdmin({
                   <div className={styles.statHeader}>
                     <span className={styles.statLabel}>Ventas Hoy</span>
                     <div className={styles.statIconBadge} style={{ background: 'rgba(62, 50, 211, 0.08)', color: 'var(--primary)' }}>
-                      💰
+                      <IconSales />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
@@ -190,7 +207,7 @@ function DashboardAdmin({
                   <div className={styles.statHeader}>
                     <span className={styles.statLabel}>Inventario Total</span>
                     <div className={styles.statIconBadge} style={{ background: 'rgba(86, 84, 168, 0.08)', color: 'var(--secondary)' }}>
-                      📦
+                      <IconInventory />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
@@ -205,7 +222,7 @@ function DashboardAdmin({
                   <div className={styles.statHeader}>
                     <span className={styles.statLabel}>Cajas Abiertas</span>
                     <div className={styles.statIconBadge} style={{ background: 'rgba(27, 135, 63, 0.08)', color: 'var(--success)' }}>
-                      🏪
+                      <IconCashRegister />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
@@ -221,7 +238,7 @@ function DashboardAdmin({
               <section className={styles.bentoCard}>
                 <div className={styles.cardHeader}>
                   <h2 className={styles.cardTitle}>
-                    <span>📍</span>
+                    <span className={styles.cardTitleIcon}><IconStore /></span>
                     <span>Desglose por Sucursal</span>
                   </h2>
                 </div>
@@ -253,7 +270,8 @@ function DashboardAdmin({
                           <td className={styles.textCenter}>
                             {s.caja ? (
                               <span className={styles.badgeAbierta}>
-                                Abierta · {formatearDinero(s.caja.monto_esperado)}
+                                <span className={styles.badgeDot}></span>
+                                <span>Abierta · {formatearDinero(s.caja.monto_esperado)}</span>
                               </span>
                             ) : (
                               <span className={styles.badgeCerrada}>Cerrada</span>
@@ -270,11 +288,12 @@ function DashboardAdmin({
               <section className={styles.bentoCard}>
                 <div className={styles.cardHeader}>
                   <h2 className={styles.cardTitle}>
-                    <span>🧾</span>
+                    <span className={styles.cardTitleIcon}><IconReceipt /></span>
                     <span>Transacciones Recientes</span>
                   </h2>
-                  <Link href="/reportes" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase' }}>
-                    Ver Reporte Completo →
+                  <Link href="/reportes" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>Ver Reporte Completo</span>
+                    <IconArrowRight style={{ width: '12px', height: '12px' }} />
                   </Link>
                 </div>
                 <div className={styles.tableScroll}>
@@ -301,8 +320,18 @@ function DashboardAdmin({
                             <td>{v.sucursal ?? '—'}</td>
                             <td>{v.usuario ?? '—'}</td>
                             <td>
-                              <span style={{ textTransform: 'capitalize' }}>
-                                {v.metodo_pago === 'tarjeta' ? '💳 Tarjeta' : '💵 Efectivo'}
+                              <span className={styles.paymentBadge}>
+                                {v.metodo_pago === 'tarjeta' ? (
+                                  <>
+                                    <IconCard style={{ color: 'var(--secondary)' }} />
+                                    <span>Tarjeta</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <IconCash style={{ color: 'var(--success)' }} />
+                                    <span>Efectivo</span>
+                                  </>
+                                )}
                               </span>
                             </td>
                             <td className={`${styles.textRight} mono`} style={{ fontWeight: 700 }}>
@@ -323,8 +352,11 @@ function DashboardAdmin({
               <section className={styles.quickNavGrid}>
                 <Link href="/catalogo" className={styles.quickNavCard}>
                   <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>📦 Catálogo</span>
-                    <span className={styles.quickNavArrow}>→</span>
+                    <span className={styles.quickNavTitle}>
+                      <IconCatalog style={{ color: 'var(--primary)' }} />
+                      <span>Catálogo</span>
+                    </span>
+                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
                   </div>
                   <p className={styles.quickNavDesc}>
                     Administración de marcas, modelos, precios autorizados y bajas definitivas.
@@ -333,8 +365,11 @@ function DashboardAdmin({
 
                 <Link href="/inventario" className={styles.quickNavCard}>
                   <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>🏭 Inventario</span>
-                    <span className={styles.quickNavArrow}>→</span>
+                    <span className={styles.quickNavTitle}>
+                      <IconInventory style={{ color: 'var(--primary)' }} />
+                      <span>Inventario</span>
+                    </span>
+                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
                   </div>
                   <p className={styles.quickNavDesc}>
                     Existencias físicas por tienda, balance de cascos y transferencias entre sucursales.
@@ -343,8 +378,11 @@ function DashboardAdmin({
 
                 <Link href="/reportes" className={styles.quickNavCard}>
                   <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>📋 Reportes</span>
-                    <span className={styles.quickNavArrow}>→</span>
+                    <span className={styles.quickNavTitle}>
+                      <IconReports style={{ color: 'var(--primary)' }} />
+                      <span>Reportes</span>
+                    </span>
+                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
                   </div>
                   <p className={styles.quickNavDesc}>
                     Auditoría de ventas con filtros multidimensionales y exportación en formato CSV.

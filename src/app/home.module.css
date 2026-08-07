@@ -22,20 +22,26 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 24px;
   padding: 0 4px;
 }
 
-.brandIcon {
-  font-size: 24px;
+.brandIconWrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: rgba(62, 50, 211, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--primary);
 }
 
 .brandTitle {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--primary);
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
@@ -80,25 +86,18 @@
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
-.navIcon {
-  font-size: 18px;
-}
-
 .sidebarFooter {
   border-top: 1px solid var(--outline-variant);
   padding-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .logoutBtn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  color: var(--error);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   background: none;
@@ -106,11 +105,12 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
 }
 
 .logoutBtn:hover {
   background: var(--error-container);
+  color: var(--error);
 }
 
 /* Contenido Principal */
@@ -180,7 +180,7 @@
   padding: 24px 28px 48px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   max-width: 1400px;
 }
 
@@ -219,7 +219,7 @@
 
 .statLabel {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
@@ -232,7 +232,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
 }
 
 .statValue {
@@ -260,7 +259,7 @@
 }
 
 .cardHeader {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--outline-variant);
   background: var(--surface-container-low);
   display: flex;
@@ -269,14 +268,20 @@
 }
 
 .cardTitle {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.cardTitleIcon {
+  color: var(--primary);
+  display: flex;
+  align-items: center;
 }
 
 .tableScroll {
@@ -292,7 +297,7 @@
 }
 
 .table th {
-  padding: 12px 16px;
+  padding: 10px 16px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -315,7 +320,7 @@
 }
 
 .table tbody tr:hover {
-  background: rgba(88, 80, 236, 0.03);
+  background: rgba(62, 50, 211, 0.02);
 }
 
 .textRight {
@@ -327,12 +332,12 @@
 }
 
 .badgeMatriz {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: var(--on-primary-container);
-  color: var(--primary-dark);
+  background: #e9e5ff;
+  color: var(--primary);
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   margin-left: 6px;
@@ -341,29 +346,40 @@
 .badgeAbierta {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 600;
   background: var(--success-bg);
   color: var(--success-text);
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
 }
 
 .badgeCerrada {
   display: inline-flex;
   align-items: center;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 600;
   background: var(--surface-container);
   color: var(--text-muted);
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
   border: 1px solid var(--outline-variant);
+}
+
+.paymentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-primary);
 }
 
 /* Quick Nav Cards */
@@ -377,13 +393,12 @@
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 18px 20px;
   box-shadow: var(--card-shadow);
   display: flex;
   flex-direction: column;
   gap: 8px;
   transition: all 0.15s ease;
-  position: relative;
 }
 
 .quickNavCard:hover {
@@ -399,14 +414,18 @@
 }
 
 .quickNavTitle {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .quickNavArrow {
   color: var(--primary);
-  font-weight: 700;
+  display: flex;
+  align-items: center;
 }
 
 .quickNavDesc {
@@ -444,7 +463,7 @@
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 /* Estado bloqueado */
