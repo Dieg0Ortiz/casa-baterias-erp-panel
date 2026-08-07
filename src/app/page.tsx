@@ -10,6 +10,7 @@ import {
   obtenerDashboard,
 } from '@/lib/admin';
 import { formatearDinero } from '@/lib/catalogo';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -162,10 +163,14 @@ function DashboardAdmin({
             <span className={styles.breadcrumbActive}>Dashboard General</span>
           </div>
 
-          <div className={styles.userInfo}>
-            <div className={styles.userText}>
-              <span className={styles.userName}>{nombre}</span>
-              <span className={styles.userRole}>Administrador</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <ThemeToggle />
+
+            <div className={styles.userInfo}>
+              <div className={styles.userText}>
+                <span className={styles.userName}>{nombre}</span>
+                <span className={styles.userRole}>Administrador</span>
+              </div>
             </div>
           </div>
         </header>
@@ -191,204 +196,174 @@ function DashboardAdmin({
                 <div className={styles.statCard}>
                   <div className={styles.statHeader}>
                     <span className={styles.statLabel}>Ventas Hoy</span>
-                    <div className={styles.statIconBadge} style={{ background: 'rgba(62, 50, 211, 0.08)', color: 'var(--primary)' }}>
+                    <div className={styles.statIconBadge} style={{ background: 'rgba(129, 140, 248, 0.12)', color: 'var(--primary)' }}>
                       <IconSales />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
                     {dashboard.resumen.ventas_hoy}
                   </div>
-                  <div className={`${styles.statSub} mono`}>
-                    {formatearDinero(dashboard.resumen.monto_ventas_hoy)} MXN
-                  </div>
+                  <span className={styles.statSub}>Transacciones completadas</span>
                 </div>
 
                 <div className={styles.statCard}>
                   <div className={styles.statHeader}>
-                    <span className={styles.statLabel}>Inventario Total</span>
-                    <div className={styles.statIconBadge} style={{ background: 'rgba(86, 84, 168, 0.08)', color: 'var(--secondary)' }}>
-                      <IconInventory />
+                    <span className={styles.statLabel}>Monto Facturado Hoy</span>
+                    <div className={styles.statIconBadge} style={{ background: 'rgba(52, 211, 153, 0.15)', color: 'var(--success)' }}>
+                      <IconBolt />
+                    </div>
+                  </div>
+                  <div className={`${styles.statValue} mono`} style={{ color: 'var(--primary)' }}>
+                    {formatearDinero(dashboard.resumen.monto_ventas_hoy)}
+                  </div>
+                  <span className={styles.statSub}>Total bruto en caja</span>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div className={styles.statHeader}>
+                    <span className={styles.statLabel}>Baterías en Stock</span>
+                    <div className={styles.statIconBadge} style={{ background: 'rgba(147, 197, 253, 0.15)', color: 'var(--secondary)' }}>
+                      <IconStore />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
                     {dashboard.resumen.unidades_inventario}
                   </div>
-                  <div className={`${styles.statSub} mono`}>
-                    {formatearDinero(dashboard.resumen.valor_inventario)} MXN
-                  </div>
+                  <span className={styles.statSub}>Unidades físicas totales</span>
                 </div>
 
                 <div className={styles.statCard}>
                   <div className={styles.statHeader}>
-                    <span className={styles.statLabel}>Cajas Abiertas</span>
-                    <div className={styles.statIconBadge} style={{ background: 'rgba(27, 135, 63, 0.08)', color: 'var(--success)' }}>
+                    <span className={styles.statLabel}>Cajas Activas</span>
+                    <div className={styles.statIconBadge} style={{ background: 'rgba(129, 140, 248, 0.12)', color: 'var(--primary)' }}>
                       <IconCashRegister />
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>
                     {dashboard.resumen.cajas_abiertas}
                   </div>
-                  <div className={`${styles.statSub} mono`}>
-                    Esperado: {formatearDinero(dashboard.resumen.valor_esperado_cajas)} MXN
+                  <span className={styles.statSub}>Turnos de cobro abiertos</span>
+                </div>
+              </section>
+
+              {/* Row 2: Bento Grid Layout */}
+              <div className={styles.bentoGrid}>
+                {/* Bento Col 1: Estado de Sucursales */}
+                <section className={styles.bentoCard}>
+                  <div className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>
+                      <IconStore style={{ color: 'var(--primary)' }} />
+                      <span>Rendimiento por Sucursal</span>
+                    </h2>
+                    <span className={styles.cardBadge}>Tiempo Real</span>
                   </div>
-                </div>
-              </section>
 
-              {/* Row 2: Por Sucursal */}
-              <section className={styles.bentoCard}>
-                <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>
-                    <span className={styles.cardTitleIcon}><IconStore /></span>
-                    <span>Desglose por Sucursal</span>
-                  </h2>
-                </div>
-                <div className={styles.tableScroll}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th>Sucursal</th>
-                        <th className={styles.textRight}>Ventas Hoy</th>
-                        <th className={styles.textRight}>Monto Hoy</th>
-                        <th className={styles.textRight}>Unidades Inv.</th>
-                        <th className={styles.textRight}>Valor Inv.</th>
-                        <th className={styles.textCenter}>Estado de Caja</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dashboard.por_sucursal.map((s) => (
-                        <tr key={s.sucursal_id}>
-                          <td>
-                            <strong>{s.nombre}</strong>
-                            {s.es_matriz && <span className={styles.badgeMatriz}>Matriz</span>}
-                          </td>
-                          <td className={`${styles.textRight} mono`}>{s.ventas_hoy}</td>
-                          <td className={`${styles.textRight} mono`} style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                            {formatearDinero(s.monto_ventas_hoy)}
-                          </td>
-                          <td className={`${styles.textRight} mono`}>{s.unidades_inventario}</td>
-                          <td className={`${styles.textRight} mono`}>{formatearDinero(s.valor_inventario)}</td>
-                          <td className={styles.textCenter}>
-                            {s.caja ? (
-                              <span className={styles.badgeAbierta}>
-                                <span className={styles.badgeDot}></span>
-                                <span>Abierta · {formatearDinero(s.caja.monto_esperado)}</span>
+                  <div className={styles.branchesList}>
+                    {dashboard.por_sucursal.map((s) => (
+                      <div key={s.sucursal_id} className={styles.branchItem}>
+                        <div className={styles.branchHeader}>
+                          <div className={styles.branchNameGroup}>
+                            <h3 className={styles.branchName}>{s.nombre}</h3>
+                            {s.es_matriz && <span className={styles.matrizTag}>Matriz</span>}
+                          </div>
+                          <span className={s.caja ? styles.statusOpen : styles.statusClosed}>
+                            {s.caja ? 'Caja Abierta' : 'Caja Cerrada'}
+                          </span>
+                        </div>
+
+                        <div className={styles.branchMetrics}>
+                          <div className={styles.metricCol}>
+                            <span className={styles.metricLabel}>Ventas Hoy</span>
+                            <span className={`${styles.metricVal} mono`}>{s.ventas_hoy}</span>
+                          </div>
+                          <div className={styles.metricCol}>
+                            <span className={styles.metricLabel}>Recaudado</span>
+                            <span className={`${styles.metricVal} mono`} style={{ color: 'var(--primary)' }}>
+                              {formatearDinero(s.monto_ventas_hoy)}
+                            </span>
+                          </div>
+                          <div className={styles.metricCol}>
+                            <span className={styles.metricLabel}>Stock</span>
+                            <span className={`${styles.metricVal} mono`}>{s.unidades_inventario} pzas</span>
+                          </div>
+                        </div>
+
+                        {s.caja && (
+                          <div className={styles.cashBoxInfo}>
+                            <div className={styles.cashBoxRow}>
+                              <span className={styles.cashBoxLabel}>Efectivo en Caja Esperado:</span>
+                              <span className={`${styles.cashBoxValue} mono`}>
+                                {formatearDinero(s.caja.monto_esperado)}
                               </span>
-                            ) : (
-                              <span className={styles.badgeCerrada}>Cerrada</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
 
-              {/* Row 3: Últimas Ventas */}
-              <section className={styles.bentoCard}>
-                <div className={styles.cardHeader}>
-                  <h2 className={styles.cardTitle}>
-                    <span className={styles.cardTitleIcon}><IconReceipt /></span>
-                    <span>Transacciones Recientes</span>
-                  </h2>
-                  <Link href="/reportes" style={{ fontSize: '11px', fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span>Ver Reporte Completo</span>
-                    <IconArrowRight style={{ width: '12px', height: '12px' }} />
-                  </Link>
-                </div>
-                <div className={styles.tableScroll}>
+                {/* Bento Col 2: Feed de Últimas Ventas */}
+                <section className={styles.bentoCard}>
+                  <div className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>
+                      <IconReceipt style={{ color: 'var(--primary)' }} />
+                      <span>Últimas Transacciones</span>
+                    </h2>
+                    <Link href="/reportes" className={styles.cardLink}>
+                      <span>Ver Reportes</span>
+                      <IconArrowRight />
+                    </Link>
+                  </div>
+
                   {dashboard.ultimas_ventas.length === 0 ? (
-                    <div className={styles.emptyText}>Aún no se han registrado ventas hoy.</div>
+                    <div className={styles.emptyText}>No hay ventas registradas el día de hoy.</div>
                   ) : (
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Folio</th>
-                          <th>Sucursal</th>
-                          <th>Empleado</th>
-                          <th>Método de Pago</th>
-                          <th className={styles.textRight}>Total</th>
-                          <th>Fecha y Hora</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dashboard.ultimas_ventas.map((v) => (
-                          <tr key={v.id}>
-                            <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
-                              {v.folio}
-                            </td>
-                            <td>{v.sucursal ?? '—'}</td>
-                            <td>{v.usuario ?? '—'}</td>
-                            <td>
-                              <span className={styles.paymentBadge}>
-                                {v.metodo_pago === 'tarjeta' ? (
-                                  <>
-                                    <IconCard style={{ color: 'var(--secondary)' }} />
-                                    <span>Tarjeta</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <IconCash style={{ color: 'var(--success)' }} />
-                                    <span>Efectivo</span>
-                                  </>
-                                )}
-                              </span>
-                            </td>
-                            <td className={`${styles.textRight} mono`} style={{ fontWeight: 700 }}>
-                              {formatearDinero(v.total)}
-                            </td>
-                            <td className="mono" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                              {new Date(v.created_at).toLocaleString('es-MX')}
-                            </td>
+                    <div className={styles.tableScroll}>
+                      <table className={styles.table}>
+                        <thead>
+                          <tr>
+                            <th>Folio</th>
+                            <th>Sucursal</th>
+                            <th>Cajero</th>
+                            <th>Método</th>
+                            <th style={{ textAlign: 'right' }}>Monto</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {dashboard.ultimas_ventas.map((v) => (
+                            <tr key={v.id}>
+                              <td className="mono" style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                                {v.folio}
+                              </td>
+                              <td>{v.sucursal ?? '—'}</td>
+                              <td style={{ color: 'var(--text-secondary)' }}>{v.usuario ?? '—'}</td>
+                              <td>
+                                <span className={styles.paymentMethod}>
+                                  {v.metodo_pago === 'tarjeta' ? (
+                                    <>
+                                      <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
+                                      <span>Tarjeta</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
+                                      <span>Efectivo</span>
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                                {formatearDinero(v.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                </div>
-              </section>
-
-              {/* Row 4: Accesos Rápidos */}
-              <section className={styles.quickNavGrid}>
-                <Link href="/catalogo" className={styles.quickNavCard}>
-                  <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>
-                      <IconCatalog style={{ color: 'var(--primary)' }} />
-                      <span>Catálogo</span>
-                    </span>
-                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
-                  </div>
-                  <p className={styles.quickNavDesc}>
-                    Administración de marcas, modelos, precios autorizados y bajas definitivas.
-                  </p>
-                </Link>
-
-                <Link href="/inventario" className={styles.quickNavCard}>
-                  <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>
-                      <IconInventory style={{ color: 'var(--primary)' }} />
-                      <span>Inventario</span>
-                    </span>
-                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
-                  </div>
-                  <p className={styles.quickNavDesc}>
-                    Existencias físicas por tienda, balance de cascos y transferencias entre sucursales.
-                  </p>
-                </Link>
-
-                <Link href="/reportes" className={styles.quickNavCard}>
-                  <div className={styles.quickNavHeader}>
-                    <span className={styles.quickNavTitle}>
-                      <IconReports style={{ color: 'var(--primary)' }} />
-                      <span>Reportes</span>
-                    </span>
-                    <span className={styles.quickNavArrow}><IconArrowRight /></span>
-                  </div>
-                  <p className={styles.quickNavDesc}>
-                    Auditoría de ventas con filtros multidimensionales y exportación en formato CSV.
-                  </p>
-                </Link>
-              </section>
+                </section>
+              </div>
             </>
           )}
         </main>

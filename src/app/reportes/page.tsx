@@ -19,6 +19,7 @@ import {
   listarSucursales,
 } from '@/lib/catalogo';
 import { generarReporteVentasPdf } from '@/lib/generadorPdf';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -206,6 +207,7 @@ function Reportes({ salir }: { salir: () => void }) {
             <span>/</span>
             <span className={styles.breadcrumbActive}>Auditoría y Reportes de Ventas</span>
           </div>
+          <ThemeToggle />
         </header>
 
         <main className={styles.mainContent}>

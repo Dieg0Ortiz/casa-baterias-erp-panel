@@ -15,6 +15,7 @@ import {
   reabastecerInventario,
   transferirInventario,
 } from '@/lib/inventario';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -215,6 +216,7 @@ function InventarioAdmin() {
             <span>/</span>
             <span className={styles.breadcrumbActive}>Inventario y Existencias</span>
           </div>
+          <ThemeToggle />
         </header>
 
         <main className={styles.mainContent}>
