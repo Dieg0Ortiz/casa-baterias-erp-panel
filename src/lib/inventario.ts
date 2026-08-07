@@ -43,6 +43,10 @@ export function transferirInventario(input: TransferenciaInput) {
   });
 }
 
+export function listarTransferencias() {
+  return api<Transferencia[]>('/inventory/transferencias');
+}
+
 export interface CorregirSucursalInput {
   producto_id: string;
   sucursal_origen_id: string;
@@ -59,10 +63,6 @@ export function corregirSucursal(input: CorregirSucursalInput) {
   });
 }
 
-export function listarTransferencias() {
-  return api<Transferencia[]>('/inventory/transferencias');
-}
-
 export interface ReabastecerInput {
   producto_id: string;
   sucursal_id: string;
@@ -72,6 +72,19 @@ export interface ReabastecerInput {
 
 export function reabastecerInventario(input: ReabastecerInput) {
   return api<unknown>('/inventory/reabastecer', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface EliminarExistenciaInput {
+  producto_id: string;
+  sucursal_id: string;
+  cantidad?: number;
+}
+
+export function eliminarExistencias(input: EliminarExistenciaInput) {
+  return api<unknown>('/inventory/eliminar-existencia', {
     method: 'POST',
     body: JSON.stringify(input),
   });

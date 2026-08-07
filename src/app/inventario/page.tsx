@@ -9,6 +9,7 @@ import { type Producto, formatearDinero, listarProductos, listarSucursales } fro
 import {
   type ItemInventario,
   type Transferencia,
+  eliminarExistencias,
   listarInventario,
   listarTransferencias,
   reabastecerInventario,
@@ -24,8 +25,16 @@ import {
   IconTransfer,
   IconClose,
   IconAdd,
+  IconDelete,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
+
+interface AjustarState {
+  productoId: string;
+  sucursalId: string;
+  modelo: string;
+  cantidadActual: number;
+}
 
 function mensajeError(e: unknown): string {
   return e instanceof ApiError
@@ -81,6 +90,7 @@ function InventarioAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [modalTransf, setModalTransf] = useState(false);
   const [modalReabastecer, setModalReabastecer] = useState(false);
+  const [modalAjustar, setModalAjustar] = useState<AjustarState | null>(null);
 
   useEffect(() => {
     let activo = true;
@@ -94,7 +104,8 @@ function InventarioAdmin() {
         setSucursales(suc);
         setCatalogo(prods.filter((p) => p.activo));
       } catch (e) {
-        if (activo) setError(mensajeError(e));
+        if (!activo) return;
+        setError(mensajeError(e));
       }
     })();
     return () => {
@@ -119,6 +130,29 @@ function InventarioAdmin() {
     } catch (e) {
       setError(mensajeError(e));
     } finally {
+      setCargando(false);
+    }
+  }
+
+  async function vaciarExistenciaDirecta(item: ItemInventario) {
+    if (!item.producto_id) return;
+    const sucursalNombre =
+      sucursales.find((s) => s.id === item.sucursal_id)?.nombre ?? 'esta tienda';
+    const confirmacion = confirm(
+      `¿Deseas eliminar y vaciar a 0 las ${item.cantidad} unidades de "${item.modelo}" en ${sucursalNombre}?`,
+    );
+    if (!confirmacion) return;
+
+    setCargando(true);
+    setError(null);
+    try {
+      await eliminarExistencias({
+        producto_id: item.producto_id,
+        sucursal_id: item.sucursal_id,
+      });
+      await cargar(sucursalId);
+    } catch (e) {
+      setError(mensajeError(e));
       setCargando(false);
     }
   }
@@ -291,6 +325,7 @@ function InventarioAdmin() {
                       <th style={{ textAlign: 'center' }}>Requiere Casco</th>
                       <th style={{ textAlign: 'right' }}>Cantidad</th>
                       <th style={{ textAlign: 'right' }}>Cascos Disponibles</th>
+                      <th style={{ textAlign: 'center' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -312,6 +347,44 @@ function InventarioAdmin() {
                         </td>
                         <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--secondary)' }}>
                           {item.cascos_disponibles}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              className={styles.btnSecondary}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: '11px',
+                                color: 'var(--primary)',
+                                borderColor: 'rgba(62, 50, 211, 0.2)',
+                                background: 'rgba(62, 50, 211, 0.04)',
+                                fontWeight: 600,
+                              }}
+                              onClick={() => setModalAjustar({
+                                productoId: item.producto_id ?? '',
+                                sucursalId: item.sucursal_id,
+                                modelo: item.modelo ?? 'Producto',
+                                cantidadActual: item.cantidad,
+                              })}
+                              title="Retirar o reducir piezas por merma / ajuste"
+                            >
+                              <span>Ajustar</span>
+                            </button>
+
+                            <button
+                              className={styles.btnSecondary}
+                              style={{
+                                padding: '4px 6px',
+                                color: 'var(--error)',
+                                borderColor: 'rgba(186, 26, 26, 0.25)',
+                                background: 'rgba(186, 26, 26, 0.04)',
+                              }}
+                              onClick={() => void vaciarExistenciaDirecta(item)}
+                              title="Eliminar y vaciar existencias a 0"
+                            >
+                              <IconDelete style={{ width: '13px', height: '13px' }} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -396,6 +469,19 @@ function InventarioAdmin() {
           }}
         />
       )}
+
+      {/* Modal de Ajuste o Retiro de Existencias */}
+      {modalAjustar && (
+        <AjustarExistenciaModal
+          ajuste={modalAjustar}
+          sucursales={sucursales}
+          onCerrar={() => setModalAjustar(null)}
+          onGuardado={async () => {
+            setModalAjustar(null);
+            await cargar(sucursalId);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -426,6 +512,132 @@ function Modal({
         {children}
       </div>
     </div>
+  );
+}
+
+function AjustarExistenciaModal({
+  ajuste,
+  sucursales,
+  onCerrar,
+  onGuardado,
+}: {
+  ajuste: AjustarState;
+  sucursales: { id: string; nombre: string }[];
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const sucursalNombre =
+    sucursales.find((s) => s.id === ajuste.sucursalId)?.nombre ?? 'esta tienda';
+
+  const [modo, setModo] = useState<'restar' | 'vaciar'>('restar');
+  const [cantidadRestar, setCantidadRestar] = useState('1');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cantNum = Number(cantidadRestar);
+  const stockResultante =
+    modo === 'vaciar' ? 0 : Math.max(0, ajuste.cantidadActual - (Number.isNaN(cantNum) ? 0 : cantNum));
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (modo === 'restar') {
+      if (Number.isNaN(cantNum) || cantNum <= 0) {
+        setError('Ingresa una cantidad válida mayor a cero a retirar.');
+        return;
+      }
+      if (cantNum > ajuste.cantidadActual) {
+        setError(`No puedes retirar más de ${ajuste.cantidadActual} unidades.`);
+        return;
+      }
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await eliminarExistencias({
+        producto_id: ajuste.productoId,
+        sucursal_id: ajuste.sucursalId,
+        cantidad: modo === 'restar' ? cantNum : undefined,
+      });
+      await onGuardado();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo={`Ajustar / Eliminar Existencia: ${ajuste.modelo}`} onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'var(--surface-container-low)', padding: '10px 14px', borderRadius: '4px', border: '1px solid var(--outline-variant)' }}>
+          <div>Tienda: <strong>{sucursalNombre}</strong></div>
+          <div>Existencia actual: <strong className="mono" style={{ color: 'var(--primary)' }}>{ajuste.cantidadActual} unidades</strong></div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="radio"
+              name="modo"
+              checked={modo === 'restar'}
+              onChange={() => setModo('restar')}
+            />
+            <span>Retirar piezas (merma / ajuste)</span>
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+            <input
+              type="radio"
+              name="modo"
+              checked={modo === 'vaciar'}
+              onChange={() => setModo('vaciar')}
+            />
+            <span style={{ color: 'var(--error)', fontWeight: 600 }}>Vaciar a 0 (Eliminar todo)</span>
+          </label>
+        </div>
+
+        {modo === 'restar' && (
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Unidades a Retirar (- Cantidad)</span>
+            <input
+              className={styles.input}
+              inputMode="numeric"
+              value={cantidadRestar}
+              onChange={(e) => setCantidadRestar(e.target.value)}
+              placeholder="1"
+              autoFocus
+            />
+          </label>
+        )}
+
+        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          Nueva existencia quedará en:{' '}
+          <strong className="mono" style={{ color: stockResultante === 0 ? 'var(--error)' : 'var(--success)' }}>
+            {stockResultante} unidades
+          </strong>
+        </div>
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className={styles.btnPrimary}
+            style={{ background: modo === 'vaciar' ? 'var(--error)' : 'var(--primary)' }}
+            disabled={guardando}
+          >
+            {guardando
+              ? 'Aplicando…'
+              : modo === 'vaciar'
+              ? 'Eliminar y Vaciar a 0'
+              : 'Aplicar Retiro de Stock'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -598,7 +810,8 @@ function TransferenciaModal({
         setProductoId(conStock.length > 0 ? (conStock[0].producto_id ?? '') : '');
         setCantidad('');
       } catch (e) {
-        if (activo) setError(mensajeError(e));
+        if (!activo) return;
+        setError(mensajeError(e));
       }
     })();
     return () => {
