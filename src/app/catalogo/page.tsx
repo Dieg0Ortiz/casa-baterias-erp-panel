@@ -8,7 +8,6 @@ import { logout, useSesion } from '@/lib/auth';
 import {
   type Marca,
   type Producto,
-  type Sucursal,
   actualizarMarca,
   actualizarPrecio,
   crearMarca,
@@ -18,7 +17,6 @@ import {
   formatearDinero,
   listarMarcas,
   listarProductos,
-  listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
 import {
@@ -33,21 +31,22 @@ import {
   IconEdit,
   IconDelete,
   IconClose,
+  IconPriceTag,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
+
+type ModalState =
+  | { tipo: 'nuevaMarca' }
+  | { tipo: 'editarMarca'; marca: Marca }
+  | { tipo: 'nuevoProducto' }
+  | { tipo: 'precio'; producto: Producto }
+  | null;
 
 function mensajeError(e: unknown): string {
   return e instanceof ApiError
     ? e.message
     : 'Ocurrió un error. Intenta de nuevo.';
 }
-
-type ModalEstado =
-  | { tipo: 'nuevaMarca' }
-  | { tipo: 'editarMarca'; marca: Marca }
-  | { tipo: 'nuevoProducto' }
-  | { tipo: 'precio'; producto: Producto }
-  | null;
 
 export default function CatalogoPage() {
   const router = useRouter();
@@ -88,50 +87,19 @@ function CatalogoAdmin() {
   const router = useRouter();
   const [marcas, setMarcas] = useState<Marca[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modal, setModal] = useState<ModalState>(null);
   const [filtro, setFiltro] = useState('');
-  const [modal, setModal] = useState<ModalEstado>(null);
   const [operando, setOperando] = useState(false);
 
-  useEffect(() => {
-    let activo = true;
-    (async () => {
-      try {
-        const datos = await Promise.all([
-          listarMarcas(),
-          listarProductos(),
-          listarSucursales(),
-        ]);
-        if (!activo) return;
-        setMarcas(datos[0]);
-        setProductos(datos[1]);
-        setSucursales(datos[2]);
-      } catch (e) {
-        if (!activo) return;
-        setError(mensajeError(e));
-      } finally {
-        if (activo) setCargando(false);
-      }
-    })();
-    return () => {
-      activo = false;
-    };
-  }, []);
-
   async function recargar() {
-    setError(null);
     setCargando(true);
+    setError(null);
     try {
-      const datos = await Promise.all([
-        listarMarcas(),
-        listarProductos(),
-        listarSucursales(),
-      ]);
-      setMarcas(datos[0]);
-      setProductos(datos[1]);
-      setSucursales(datos[2]);
+      const [m, p] = await Promise.all([listarMarcas(), listarProductos()]);
+      setMarcas(m);
+      setProductos(p);
     } catch (e) {
       setError(mensajeError(e));
     } finally {
@@ -139,23 +107,35 @@ function CatalogoAdmin() {
     }
   }
 
-  function salir() {
-    logout();
-    router.replace('/login');
-    router.refresh();
+  useEffect(() => {
+    void recargar();
+  }, []);
+
+  async function eliminar(marca: Marca) {
+    const totalEnMarca = productos.filter((p) => p.marcas?.nombre === marca.nombre).length;
+    const msg =
+      totalEnMarca > 0
+        ? `¿Eliminar la marca "${marca.nombre}"? Tiene ${totalEnMarca} producto(s) asociado(s).`
+        : `¿Eliminar la marca "${marca.nombre}"?`;
+    if (!confirm(msg)) return;
+    setOperando(true);
+    setError(null);
+    try {
+      await eliminarMarca(marca.id);
+      await recargar();
+    } catch (e) {
+      setError(mensajeError(e));
+    } finally {
+      setOperando(false);
+    }
   }
 
-  const visibles = productos.filter((p) => {
-    const q = filtro.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      p.modelo.toLowerCase().includes(q) ||
-      p.codigo_barras.toLowerCase().includes(q)
-    );
-  });
-
   async function bajarDeCatalogo(producto: Producto) {
-    if (!window.confirm(`¿Dar de baja "${producto.modelo}"? La baja es definitiva.`)) {
+    if (
+      !confirm(
+        `¿Dar de baja "${producto.modelo}"? Ya no aparecerá disponible para ventas.`,
+      )
+    ) {
       return;
     }
     setOperando(true);
@@ -170,19 +150,21 @@ function CatalogoAdmin() {
     }
   }
 
-  async function eliminar(marca: Marca) {
-    if (!window.confirm(`¿Eliminar la marca "${marca.nombre}"?`)) return;
-    setOperando(true);
-    setError(null);
-    try {
-      await eliminarMarca(marca.id);
-      await recargar();
-    } catch (e) {
-      setError(mensajeError(e));
-    } finally {
-      setOperando(false);
-    }
+  function salir() {
+    logout();
+    router.replace('/login');
+    router.refresh();
   }
+
+  const visibles = productos.filter((p) => {
+    if (!filtro.trim()) return true;
+    const f = filtro.toLowerCase();
+    return (
+      p.modelo.toLowerCase().includes(f) ||
+      p.codigo_barras.toLowerCase().includes(f) ||
+      (p.marcas?.nombre ?? '').toLowerCase().includes(f)
+    );
+  });
 
   return (
     <div className={styles.layout}>
@@ -229,7 +211,7 @@ function CatalogoAdmin() {
           <div className={styles.breadcrumb}>
             <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
             <span>/</span>
-            <span className={styles.breadcrumbActive}>Catálogo de Productos</span>
+            <span className={styles.breadcrumbActive}>Catálogo de Productos y Marcas</span>
           </div>
         </header>
 
@@ -284,7 +266,7 @@ function CatalogoAdmin() {
                           <IconEdit />
                         </button>
                         <button
-                          className={styles.actionBtnDanger}
+                          className={styles.btnDeleteAction}
                           onClick={() => void eliminar(marca)}
                           disabled={operando}
                           title="Eliminar marca"
@@ -386,19 +368,22 @@ function CatalogoAdmin() {
                           <td style={{ textAlign: 'center' }}>
                             <div className={styles.itemActions} style={{ justifyContent: 'center' }}>
                               <button
-                                className={styles.actionBtn}
+                                className={styles.btnPriceAction}
                                 onClick={() => setModal({ tipo: 'precio', producto })}
                                 disabled={operando || !producto.activo}
+                                title="Modificar precio de venta"
                               >
-                                Precio
+                                <IconPriceTag style={{ width: '13px', height: '13px' }} />
+                                <span>Precio</span>
                               </button>
                               {producto.activo && (
                                 <button
-                                  className={styles.actionBtnDanger}
+                                  className={styles.btnDeleteAction}
                                   onClick={() => void bajarDeCatalogo(producto)}
                                   disabled={operando}
+                                  title="Dar de baja producto del catálogo"
                                 >
-                                  Baja
+                                  <IconDelete style={{ width: '15px', height: '15px' }} />
                                 </button>
                               )}
                             </div>
@@ -416,7 +401,7 @@ function CatalogoAdmin() {
 
       {/* Modales */}
       {modal?.tipo === 'nuevaMarca' && (
-        <MarcaModal
+        <NuevaMarcaModal
           onCerrar={() => setModal(null)}
           onGuardada={async () => {
             setModal(null);
@@ -424,8 +409,9 @@ function CatalogoAdmin() {
           }}
         />
       )}
+
       {modal?.tipo === 'editarMarca' && (
-        <MarcaModal
+        <EditarMarcaModal
           marca={modal.marca}
           onCerrar={() => setModal(null)}
           onGuardada={async () => {
@@ -434,22 +420,23 @@ function CatalogoAdmin() {
           }}
         />
       )}
+
       {modal?.tipo === 'nuevoProducto' && (
-        <ProductoModal
+        <NuevoProductoModal
           marcas={marcas}
-          sucursales={sucursales}
           onCerrar={() => setModal(null)}
-          onGuardada={async () => {
+          onGuardado={async () => {
             setModal(null);
             await recargar();
           }}
         />
       )}
+
       {modal?.tipo === 'precio' && (
         <PrecioModal
           producto={modal.producto}
           onCerrar={() => setModal(null)}
-          onGuardada={async () => {
+          onGuardado={async () => {
             setModal(null);
             await recargar();
           }}
@@ -488,17 +475,15 @@ function Modal({
   );
 }
 
-function MarcaModal({
-  marca,
+function NuevaMarcaModal({
   onCerrar,
   onGuardada,
 }: {
-  marca?: Marca;
   onCerrar: () => void;
   onGuardada: () => void | Promise<void>;
 }) {
-  const [nombre, setNombre] = useState(marca?.nombre ?? '');
-  const [descripcion, setDescripcion] = useState(marca?.descripcion ?? '');
+  const [nombre, setNombre] = useState('');
+  const [descripcion, setDescripcion] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -511,110 +496,9 @@ function MarcaModal({
     setGuardando(true);
     setError(null);
     try {
-      const datos = {
+      await crearMarca({
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
-      };
-      if (marca) await actualizarMarca(marca.id, datos);
-      else await crearMarca(datos);
-      await onGuardada();
-    } catch (err) {
-      setError(mensajeError(err));
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <Modal titulo={marca ? 'Editar Marca' : 'Nueva Marca'} onCerrar={onCerrar}>
-      <form className={styles.form} onSubmit={guardar}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Nombre de la Marca</span>
-          <input
-            className={styles.input}
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Ej. LTH, Óptima, América"
-            autoFocus
-          />
-        </label>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Descripción (opcional)</span>
-          <input
-            className={styles.input}
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Línea premium, estándar, etc."
-          />
-        </label>
-        {error && <p className={styles.errorBanner}>{error}</p>}
-        <div className={styles.modalFooter}>
-          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-            Cancelar
-          </button>
-          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar Marca'}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function ProductoModal({
-  marcas,
-  sucursales,
-  onCerrar,
-  onGuardada,
-}: {
-  marcas: Marca[];
-  sucursales: Sucursal[];
-  onCerrar: () => void;
-  onGuardada: () => void | Promise<void>;
-}) {
-  const [marcaId, setMarcaId] = useState(marcas[0]?.id ?? '');
-  const [modelo, setModelo] = useState('');
-  const [descripcion, setDescripcion] = useState('');
-  const [precio, setPrecio] = useState('');
-  const [requiereCasco, setRequiereCasco] = useState(true);
-  const [codigoFabrica, setCodigoFabrica] = useState('');
-  const [sucursalId, setSucursalId] = useState(sucursales[0]?.id ?? '');
-  const [cantidadInicial, setCantidadInicial] = useState('');
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    const precioNum = Number(precio);
-    if (!marcaId) {
-      setError('Selecciona una marca.');
-      return;
-    }
-    if (!modelo.trim()) {
-      setError('El modelo del producto es obligatorio.');
-      return;
-    }
-    if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Precio en MXN inválido.');
-      return;
-    }
-    const cantidad =
-      cantidadInicial.trim() === '' ? undefined : Number(cantidadInicial);
-    if (cantidad !== undefined && (Number.isNaN(cantidad) || cantidad < 0)) {
-      setError('Cantidad inicial inválida.');
-      return;
-    }
-    setGuardando(true);
-    setError(null);
-    try {
-      await crearProducto({
-        marca_id: marcaId,
-        modelo: modelo.trim(),
-        descripcion: descripcion.trim() || undefined,
-        precio: precioNum,
-        requiere_casco: requiereCasco,
-        codigo_barras_fabrica: codigoFabrica.trim() || undefined,
-        sucursal_id: sucursalId,
-        cantidad_inicial: cantidad,
       });
       await onGuardada();
     } catch (err) {
@@ -624,7 +508,166 @@ function ProductoModal({
   }
 
   return (
-    <Modal titulo="Nuevo Producto en Catálogo" onCerrar={onCerrar}>
+    <Modal titulo="Nueva Marca" onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nombre de la Marca</span>
+          <input
+            className={styles.input}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Ej. América, LTH, Cronos"
+            autoFocus
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Descripción (opcional)</span>
+          <input
+            className={styles.input}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Garantías, línea comercial, etc."
+          />
+        </label>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Crear Marca'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function EditarMarcaModal({
+  marca,
+  onCerrar,
+  onGuardada,
+}: {
+  marca: Marca;
+  onCerrar: () => void;
+  onGuardada: () => void | Promise<void>;
+}) {
+  const [nombre, setNombre] = useState(marca.nombre);
+  const [descripcion, setDescripcion] = useState(marca.descripcion ?? '');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (!nombre.trim()) {
+      setError('El nombre de la marca es obligatorio.');
+      return;
+    }
+    setGuardando(true);
+    setError(null);
+    try {
+      await actualizarMarca(marca.id, {
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim() || undefined,
+      });
+      await onGuardada();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo="Editar Marca" onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nombre de la Marca</span>
+          <input
+            className={styles.input}
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            autoFocus
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Descripción (opcional)</span>
+          <input
+            className={styles.input}
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+          />
+        </label>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar Cambios'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function NuevoProductoModal({
+  marcas,
+  onCerrar,
+  onGuardado,
+}: {
+  marcas: Marca[];
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const [marcaId, setMarcaId] = useState(marcas[0]?.id ?? '');
+  const [modelo, setModelo] = useState('');
+  const [codigoBarras, setCodigoBarras] = useState('');
+  const [descripcion, setDescripcion] = useState('');
+  const [precio, setPrecio] = useState('');
+  const [requiereCasco, setRequiereCasco] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (!marcaId) {
+      setError('Debes seleccionar una marca.');
+      return;
+    }
+    if (!modelo.trim()) {
+      setError('El modelo del producto es obligatorio.');
+      return;
+    }
+    if (!codigoBarras.trim()) {
+      setError('El código de barras es obligatorio.');
+      return;
+    }
+    const precioNum = Number(precio);
+    if (Number.isNaN(precioNum) || precioNum < 0) {
+      setError('Ingresa un precio válido (mayor o igual a cero).');
+      return;
+    }
+    setGuardando(true);
+    setError(null);
+    try {
+      await crearProducto({
+        marca_id: marcaId,
+        modelo: modelo.trim(),
+        codigo_barras_fabrica: codigoBarras.trim(),
+        descripcion: descripcion.trim() || undefined,
+        precio: precioNum,
+        requiere_casco: requiereCasco,
+      });
+      await onGuardado();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo="Nuevo Producto / Batería" onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
         <div className={styles.formRow}>
           <label className={styles.field}>
@@ -642,31 +685,38 @@ function ProductoModal({
             </select>
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Sucursal de Entrada</span>
-            <select
-              className={styles.select}
-              value={sucursalId}
-              onChange={(e) => setSucursalId(e.target.value)}
-            >
-              {sucursales.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
+            <span className={styles.fieldLabel}>Modelo</span>
+            <input
+              className={styles.input}
+              value={modelo}
+              onChange={(e) => setModelo(e.target.value)}
+              placeholder="Ej. NS40ZL, L-48/91-700"
+              autoFocus
+            />
           </label>
         </div>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Modelo del Producto</span>
-          <input
-            className={styles.input}
-            value={modelo}
-            onChange={(e) => setModelo(e.target.value)}
-            placeholder="Ej. L-42-400, AGM-34"
-            autoFocus
-          />
-        </label>
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Código de Barras</span>
+            <input
+              className={styles.input}
+              value={codigoBarras}
+              onChange={(e) => setCodigoBarras(e.target.value)}
+              placeholder="Ej. 7501000123456"
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio de Venta ($ MXN)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio}
+              onChange={(e) => setPrecio(e.target.value)}
+              placeholder="1850.00"
+            />
+          </label>
+        </div>
 
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Descripción Técnica (opcional)</span>
@@ -674,40 +724,7 @@ function ProductoModal({
             className={styles.input}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="12V, 400 CCA, Terminal estándar"
-          />
-        </label>
-
-        <div className={styles.formRow}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Precio Autorizado (MXN)</span>
-            <input
-              className={styles.input}
-              inputMode="decimal"
-              placeholder="0.00"
-              value={precio}
-              onChange={(e) => setPrecio(e.target.value)}
-            />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Stock Inicial</span>
-            <input
-              className={styles.input}
-              inputMode="numeric"
-              placeholder="0"
-              value={cantidadInicial}
-              onChange={(e) => setCantidadInicial(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Código de Fábrica (opcional)</span>
-          <input
-            className={styles.input}
-            placeholder="Si se deja vacío, se generará código interno automáticamente"
-            value={codigoFabrica}
-            onChange={(e) => setCodigoFabrica(e.target.value)}
+            placeholder="Amperaje, bornes, medidas, garantía…"
           />
         </label>
 
@@ -717,7 +734,7 @@ function ProductoModal({
             checked={requiereCasco}
             onChange={(e) => setRequiereCasco(e.target.checked)}
           />
-          <span>Requiere intercambio de casco a cambio</span>
+          <span>Requiere entregar casco/batería vieja a cambio</span>
         </label>
 
         {error && <p className={styles.errorBanner}>{error}</p>}
@@ -727,7 +744,7 @@ function ProductoModal({
             Cancelar
           </button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Creando…' : 'Crear Producto'}
+            {guardando ? 'Guardando…' : 'Registrar Producto'}
           </button>
         </div>
       </form>
@@ -738,11 +755,11 @@ function ProductoModal({
 function PrecioModal({
   producto,
   onCerrar,
-  onGuardada,
+  onGuardado,
 }: {
   producto: Producto;
   onCerrar: () => void;
-  onGuardada: () => void | Promise<void>;
+  onGuardado: () => void | Promise<void>;
 }) {
   const [precio, setPrecio] = useState(String(producto.precio));
   const [guardando, setGuardando] = useState(false);
@@ -750,16 +767,16 @@ function PrecioModal({
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
-    const precioNum = Number(precio);
-    if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Ingresa un precio válido en MXN.');
+    const pNum = Number(precio);
+    if (Number.isNaN(pNum) || pNum < 0) {
+      setError('Ingresa un precio válido (mayor o igual a cero).');
       return;
     }
     setGuardando(true);
     setError(null);
     try {
-      await actualizarPrecio(producto.id, precioNum);
-      await onGuardada();
+      await actualizarPrecio(producto.id, pNum);
+      await onGuardado();
     } catch (err) {
       setError(mensajeError(err));
       setGuardando(false);
@@ -767,31 +784,26 @@ function PrecioModal({
   }
 
   return (
-    <Modal
-      titulo={`Actualizar Precio — ${producto.modelo}`}
-      onCerrar={onCerrar}
-    >
+    <Modal titulo={`Modificar Precio: ${producto.modelo}`} onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-          Precio vigente actual:{' '}
-          <strong className="mono" style={{ color: 'var(--primary)', fontSize: '15px' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+          Precio actual:{' '}
+          <strong style={{ color: 'var(--primary)' }}>
             {formatearDinero(producto.precio)}
           </strong>
-        </div>
-
+        </p>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Nuevo Precio Autorizado (MXN)</span>
+          <span className={styles.fieldLabel}>Nuevo Precio ($ MXN)</span>
           <input
             className={styles.input}
             inputMode="decimal"
             value={precio}
             onChange={(e) => setPrecio(e.target.value)}
+            placeholder="0.00"
             autoFocus
           />
         </label>
-
         {error && <p className={styles.errorBanner}>{error}</p>}
-
         <div className={styles.modalFooter}>
           <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
             Cancelar

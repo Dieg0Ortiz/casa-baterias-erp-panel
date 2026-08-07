@@ -90,10 +90,10 @@
 .logoutBtn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  color: var(--error);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   background: none;
@@ -101,10 +101,12 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
+  transition: all 0.15s ease;
 }
 
 .logoutBtn:hover {
   background: var(--error-container);
+  color: var(--error);
 }
 
 /* Contenido Principal */
@@ -177,7 +179,7 @@
 }
 
 .cardHeader {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--outline-variant);
   background: var(--surface-container-low);
   display: flex;
@@ -222,7 +224,6 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  divide-y: 1px solid var(--outline-variant);
   max-height: calc(100vh - 220px);
   overflow-y: auto;
 }
@@ -261,33 +262,83 @@
 
 .actionBtn {
   background: none;
-  border: none;
+  border: 1px solid transparent;
   color: var(--secondary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
 }
 
-.actionBtn:hover {
+.actionBtn:hover:not(:disabled) {
   background: var(--surface-container);
   color: var(--primary);
+  border-color: var(--outline-variant);
 }
 
-.actionBtnDanger {
-  background: none;
-  border: none;
-  color: var(--error);
+.actionBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Botón de Precio Estilizado */
+.btnPriceAction {
+  background: rgba(62, 50, 211, 0.06);
+  border: 1px solid rgba(62, 50, 211, 0.18);
+  color: var(--primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
 }
 
-.actionBtnDanger:hover {
+.btnPriceAction:hover:not(:disabled) {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btnPriceAction:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: var(--surface-container);
+  color: var(--text-muted);
+  border-color: var(--outline-variant);
+}
+
+/* Botón de Bote de Basura */
+.btnDeleteAction {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--error);
+  cursor: pointer;
+  padding: 5px 6px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btnDeleteAction:hover:not(:disabled) {
   background: var(--error-container);
+  color: var(--on-error-container);
+  border-color: rgba(186, 26, 26, 0.2);
+}
+
+.btnDeleteAction:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* Buscador y Tabla de Productos */
@@ -328,7 +379,7 @@
 }
 
 .table th {
-  padding: 12px 16px;
+  padding: 10px 16px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -351,11 +402,11 @@
 }
 
 .table tbody tr:hover {
-  background: rgba(88, 80, 236, 0.03);
+  background: rgba(62, 50, 211, 0.02);
 }
 
 .rowInactive {
-  opacity: 0.5;
+  opacity: 0.55;
   background: var(--surface-container-low);
 }
 
@@ -366,7 +417,7 @@
   letter-spacing: 0.05em;
   background: var(--success-bg);
   color: var(--success-text);
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: var(--radius-full);
 }
 
@@ -375,9 +426,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: var(--error-container);
-  color: var(--on-error-container);
-  padding: 2px 6px;
+  background: var(--surface-container);
+  color: var(--text-muted);
+  border: 1px solid var(--outline-variant);
+  padding: 2px 8px;
   border-radius: var(--radius-full);
 }
 
