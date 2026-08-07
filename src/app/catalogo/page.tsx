@@ -21,7 +21,7 @@ import {
   listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
-import { reabastecerInventario, transferirInventario } from '@/lib/inventario';
+import { corregirSucursal, reabastecerInventario } from '@/lib/inventario';
 import {
   IconBolt,
   IconDashboard,
@@ -985,7 +985,6 @@ function ReubicarStockModal({
 
   const [origenId, setOrigenId] = useState(origenDefault);
   const [destinoId, setDestinoId] = useState(destinoDefault);
-  const [cantidad, setCantidad] = useState(String(existencias[0]?.cantidad ?? 1));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -994,28 +993,17 @@ function ReubicarStockModal({
   async function guardar(e: FormEvent) {
     e.preventDefault();
     if (origenId === destinoId) {
-      setError('La sucursal de origen y destino deben ser distintas.');
-      return;
-    }
-    const cantNum = Number(cantidad);
-    if (Number.isNaN(cantNum) || cantNum <= 0) {
-      setError('Ingresa una cantidad válida a reubicar.');
-      return;
-    }
-    if (existenciaOrigen && cantNum > existenciaOrigen.cantidad) {
-      setError(`Solo hay ${existenciaOrigen.cantidad} unidad(es) disponible(s) en la tienda de origen.`);
+      setError('La sucursal actual y la correcta deben ser distintas.');
       return;
     }
 
     setGuardando(true);
     setError(null);
     try {
-      await transferirInventario({
+      await corregirSucursal({
         producto_id: producto.id,
         sucursal_origen_id: origenId,
         sucursal_destino_id: destinoId,
-        cantidad: cantNum,
-        nota: 'Corrección de sucursal inicial',
       });
       await onGuardado();
     } catch (err) {
@@ -1028,20 +1016,28 @@ function ReubicarStockModal({
     <Modal titulo={`Corregir Sucursal: ${producto.modelo}`} onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
         <p className={styles.helperText}>
-          Usa esta opción si el producto fue asignado por error a una sucursal distinta al momento del registro.
+          Usa esta opción si el producto fue dado de alta por error en una
+          sucursal equivocada. Se moverá <strong>toda su existencia</strong> a
+          la sucursal correcta sin registrar una transferencia (las
+          transferencias quedan para movimientos reales entre tiendas).
         </p>
 
         <div className={styles.formRow}>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Ubicación Actual (Origen)</span>
+            <span className={styles.fieldLabel}>Ubicación Actual (Equivocada)</span>
             <select
               className={styles.select}
               value={origenId}
               onChange={(e) => {
                 const nuevoOrigen = e.target.value;
                 setOrigenId(nuevoOrigen);
-                const stock = existencias.find((x) => x.sucursal_id === nuevoOrigen)?.cantidad ?? 1;
-                setCantidad(String(stock));
+                if (destinoId === nuevoOrigen) {
+                  const otro =
+                    sucursales.find((s) => s.id !== nuevoOrigen)?.id ??
+                    sucursales[0]?.id ??
+                    '';
+                  setDestinoId(otro);
+                }
               }}
             >
               {existencias.map((inv) => {
@@ -1073,17 +1069,16 @@ function ReubicarStockModal({
           </label>
         </div>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Cantidad de Unidades a Mover</span>
-          <input
-            className={styles.input}
-            inputMode="numeric"
-            value={cantidad}
-            onChange={(e) => setCantidad(e.target.value)}
-            placeholder="1"
-            autoFocus
-          />
-        </label>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
+          Existencia que se moverá:{' '}
+          <strong className="mono" style={{ color: 'var(--primary)' }}>
+            {existenciaOrigen?.cantidad ?? 0} unidades
+          </strong>
+          {' '}· cascos disponibles:{' '}
+          <strong className="mono">
+            {existenciaOrigen?.cascos_disponibles ?? 0}
+          </strong>
+        </p>
 
         {error && <p className={styles.errorBanner}>{error}</p>}
 
@@ -1092,7 +1087,7 @@ function ReubicarStockModal({
             Cancelar
           </button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
-            {guardando ? 'Reubicando…' : 'Corregir Ubicación'}
+            {guardando ? 'Corrigiendo…' : 'Mover a Sucursal Correcta'}
           </button>
         </div>
       </form>

@@ -43,6 +43,22 @@ export function transferirInventario(input: TransferenciaInput) {
   });
 }
 
+export interface CorregirSucursalInput {
+  producto_id: string;
+  sucursal_origen_id: string;
+  sucursal_destino_id: string;
+}
+
+// Corrección de sucursal: mueve TODA la existencia de un producto dado de
+// alta en la sucursal equivocada a la correcta, SIN registrar una
+// transferencia. Las transferencias quedan para movimientos legítimos.
+export function corregirSucursal(input: CorregirSucursalInput) {
+  return api<unknown>('/inventory/corregir-sucursal', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function listarTransferencias() {
   return api<Transferencia[]>('/inventory/transferencias');
 }
