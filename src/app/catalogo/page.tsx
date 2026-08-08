@@ -669,10 +669,6 @@ function NuevoProductoModal({
       setError('El modelo del producto es obligatorio.');
       return;
     }
-    if (!codigoBarras.trim()) {
-      setError('El código de barras es obligatorio.');
-      return;
-    }
     if (!sucursalId) {
       setError('Selecciona la sucursal de alta inicial.');
       return;
@@ -694,7 +690,7 @@ function NuevoProductoModal({
       await crearProducto({
         marca_id: marcaId,
         modelo: modelo.trim(),
-        codigo_barras_fabrica: codigoBarras.trim(),
+        codigo_barras_fabrica: codigoBarras.trim() || undefined,
         descripcion: descripcion.trim() || undefined,
         precio: precioNum,
         requiere_casco: requiereCasco,
@@ -767,13 +763,18 @@ function NuevoProductoModal({
 
         <div className={styles.formRow}>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Código de Barras</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className={styles.fieldLabel}>Código de Barras / SKU (Opcional)</span>
+            </div>
             <input
               className={styles.input}
               value={codigoBarras}
               onChange={(e) => setCodigoBarras(e.target.value)}
-              placeholder="Ej. 7501000123456"
+              placeholder="Automático (CB...) o ingresa uno de fábrica"
             />
+            <span className={styles.helperText}>
+              ⚡ Si se deja vacío, el sistema generará automáticamente un código único oficial (CB...).
+            </span>
           </label>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Precio de Venta ($ MXN)</span>
