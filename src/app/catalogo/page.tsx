@@ -34,6 +34,7 @@ import {
   IconEdit,
   IconDelete,
   IconClose,
+  IconMenu,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
 
@@ -95,6 +96,7 @@ function CatalogoAdmin() {
   const [modal, setModal] = useState<ModalState>(null);
   const [filtro, setFiltro] = useState('');
   const [operando, setOperando] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   async function recargar() {
     setCargando(true);
@@ -176,30 +178,64 @@ function CatalogoAdmin() {
 
   return (
     <div className={styles.layout}>
-      {/* Sidebar Persistente */}
-      <aside className={styles.sidebar}>
+      {/* Backdrop para cerrar menú móvil al hacer tap fuera */}
+      {menuAbierto && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setMenuAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Persistente y Drawer Móvil */}
+      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
-          <div>
-            <h1 className={styles.brandTitle}>Casa Baterías</h1>
-            <p className={styles.brandSubtitle}>Control Central</p>
+          <div className={styles.brandInfo}>
+            <span className={styles.brandIcon}><IconBolt /></span>
+            <div>
+              <h1 className={styles.brandTitle}>Casa Baterías</h1>
+              <p className={styles.brandSubtitle}>Control Central</p>
+            </div>
           </div>
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setMenuAbierto(false)}
+            aria-label="Cerrar menú"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className={styles.nav}>
-          <Link href="/" className={styles.navItem}>
+          <Link
+            href="/"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
-          <Link href="/catalogo" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <Link
+            href="/catalogo"
+            className={`${styles.navItem} ${styles.navItemActive}`}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
-          <Link href="/inventario" className={styles.navItem}>
+          <Link
+            href="/inventario"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
-          <Link href="/reportes" className={styles.navItem}>
+          <Link
+            href="/reportes"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
@@ -216,10 +252,19 @@ function CatalogoAdmin() {
       {/* Contenido Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.breadcrumb}>
-            <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
-            <span>/</span>
-            <span className={styles.breadcrumbActive}>Catálogo de Productos y Marcas</span>
+          <div className={styles.headerLeft}>
+            <button
+              className={styles.menuBtn}
+              onClick={() => setMenuAbierto(true)}
+              aria-label="Abrir menú de navegación"
+            >
+              <IconMenu />
+            </button>
+            <div className={styles.breadcrumb}>
+              <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+              <span>/</span>
+              <span className={styles.breadcrumbActive}>Catálogo</span>
+            </div>
           </div>
           <ThemeToggle />
         </header>

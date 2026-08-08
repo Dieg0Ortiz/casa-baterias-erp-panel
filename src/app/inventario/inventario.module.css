@@ -2,6 +2,8 @@
   display: flex;
   min-height: 100vh;
   background: var(--background);
+  position: relative;
+  overflow-x: hidden;
 }
 
 .sidebar {
@@ -15,7 +17,33 @@
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 20;
+  z-index: 40;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebarBackdrop {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+    box-shadow: var(--modal-shadow);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 15, 25, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 35;
+  }
 }
 
 .brand {
@@ -24,11 +52,19 @@
   gap: 10px;
   margin-bottom: 24px;
   padding: 0 4px;
+  justify-content: space-between;
+}
+
+.brandInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .brandIcon {
   font-size: 24px;
   color: var(--primary);
+  display: flex;
 }
 
 .brandTitle {
@@ -44,6 +80,25 @@
   text-transform: uppercase;
   color: var(--text-muted);
   letter-spacing: 0.05em;
+}
+
+.sidebarCloseBtn {
+  display: none;
+  background: none;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+@media (max-width: 1023px) {
+  .sidebarCloseBtn {
+    display: flex;
+  }
 }
 
 .nav {
@@ -93,7 +148,7 @@
   gap: 12px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  color: var(--error);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   background: none;
@@ -101,10 +156,12 @@
   cursor: pointer;
   width: 100%;
   text-align: left;
+  transition: all 0.15s ease;
 }
 
 .logoutBtn:hover {
   background: var(--error-container);
+  color: var(--error);
 }
 
 /* Contenido Principal */
@@ -114,6 +171,14 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: calc(100% - 240px);
+}
+
+@media (max-width: 1023px) {
+  .mainWrapper {
+    margin-left: 0;
+    width: 100%;
+  }
 }
 
 .header {
@@ -126,7 +191,41 @@
   padding: 0 28px;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 25;
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+    height: 56px;
+  }
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.menuBtn {
+  display: none;
+  background: none;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1023px) {
+  .menuBtn {
+    display: flex;
+  }
 }
 
 .breadcrumb {
@@ -138,18 +237,32 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .breadcrumbActive {
   color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mainContent {
   padding: 24px 28px 48px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 1400px;
+  gap: 20px;
+  max-width: 1600px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 16px 16px 36px;
+    gap: 16px;
+  }
 }
 
 /* Barra de Filtro y Acciones */
@@ -163,13 +276,15 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 14px;
 }
 
 .filterControls {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
 }
 
 .fieldLabel {
@@ -188,18 +303,33 @@
   color: var(--text-primary);
   background: var(--surface);
   outline: none;
-  min-width: 220px;
+  min-width: 200px;
+}
+
+@media (max-width: 600px) {
+  .select {
+    width: 100%;
+    min-width: 100%;
+  }
 }
 
 .select:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(62, 50, 211, 0.15);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
 }
 
 .actionGroup {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .actionGroup {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .btnSecondary {
@@ -212,6 +342,9 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btnSecondary:hover:not(:disabled) {
@@ -228,6 +361,9 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .btnPrimary:hover:not(:disabled) {
@@ -243,56 +379,67 @@
 /* Stat Cards de Inventario */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
+}
+
+@media (max-width: 540px) {
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .statCard {
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 18px 20px;
   box-shadow: var(--card-shadow);
-}
-
-.statHeader {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  margin-bottom: 8px;
 }
 
 .statLabel {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
 
 .statValue {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text-primary);
-  letter-spacing: -0.02em;
+  margin: 6px 0 2px;
 }
 
-/* Bento Cards de Tablas */
+.statSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Bento Card para Tablas */
 .bentoCard {
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
   box-shadow: var(--card-shadow);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .cardHeader {
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--outline-variant);
   background: var(--surface-container-low);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cardTitle {
@@ -309,6 +456,7 @@
 .tableScroll {
   overflow-x: auto;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -316,10 +464,11 @@
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
+  min-width: 720px;
 }
 
 .table th {
-  padding: 12px 16px;
+  padding: 10px 16px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -342,30 +491,71 @@
 }
 
 .table tbody tr:hover {
-  background: rgba(88, 80, 236, 0.03);
+  background: rgba(129, 140, 248, 0.04);
 }
 
-/* Modales */
+.btnActionSm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnActionSm:hover:not(:disabled) {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+
+.btnDeleteAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnDeleteAction:hover:not(:disabled) {
+  background: var(--error-container);
+  color: var(--error);
+  border-color: var(--error);
+}
+
+/* Modales y Formularios */
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(25, 28, 30, 0.5);
-  backdrop-filter: blur(2px);
+  background: rgba(11, 15, 25, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
   z-index: 50;
+  padding: 16px;
 }
 
 .modal {
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-  width: 100%;
-  max-width: 540px;
   box-shadow: var(--modal-shadow);
-  overflow: hidden;
+  width: 100%;
+  max-width: 580px;
+  max-height: 90vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -380,7 +570,7 @@
 }
 
 .modalHeader h3 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -388,10 +578,9 @@
 .closeBtn {
   background: none;
   border: none;
-  font-size: 18px;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px;
+  display: flex;
 }
 
 .closeBtn:hover {
@@ -408,7 +597,13 @@
 .formRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
+}
+
+@media (max-width: 600px) {
+  .formRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .field {
@@ -429,7 +624,7 @@
 
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(62, 50, 211, 0.15);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
 }
 
 .errorBanner {
@@ -448,14 +643,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-}
-
-.emptyText,
-.loadingText {
-  padding: 40px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
+  flex-wrap: wrap;
 }
 
 .lockedPage {
@@ -468,10 +656,11 @@
 
 .lockedCard {
   max-width: 440px;
+  width: 100%;
   background: var(--surface);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
-  padding: 32px;
+  padding: 32px 24px;
   text-align: center;
   box-shadow: var(--modal-shadow);
   display: flex;

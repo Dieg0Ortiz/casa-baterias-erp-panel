@@ -25,6 +25,8 @@ import {
   IconArrowRight,
   IconCard,
   IconCash,
+  IconMenu,
+  IconClose,
 } from '@/components/Icons';
 import styles from './home.module.css';
 
@@ -78,6 +80,7 @@ function DashboardAdmin({
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -115,32 +118,66 @@ function DashboardAdmin({
 
   return (
     <div className={styles.layout}>
-      {/* Sidebar Persistente */}
-      <aside className={styles.sidebar}>
+      {/* Backdrop para cerrar menú móvil al hacer tap fuera */}
+      {menuAbierto && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setMenuAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Persistente y Drawer Móvil */}
+      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <div className={styles.brandIconWrapper}>
-            <IconBolt />
+          <div className={styles.brandInfo}>
+            <div className={styles.brandIconWrapper}>
+              <IconBolt />
+            </div>
+            <div>
+              <h1 className={styles.brandTitle}>Casa Baterías</h1>
+              <p className={styles.brandSubtitle}>Control Central</p>
+            </div>
           </div>
-          <div>
-            <h1 className={styles.brandTitle}>Casa Baterías</h1>
-            <p className={styles.brandSubtitle}>Control Central</p>
-          </div>
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setMenuAbierto(false)}
+            aria-label="Cerrar menú"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className={styles.nav}>
-          <Link href="/" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <Link
+            href="/"
+            className={`${styles.navItem} ${styles.navItemActive}`}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
-          <Link href="/catalogo" className={styles.navItem}>
+          <Link
+            href="/catalogo"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
-          <Link href="/inventario" className={styles.navItem}>
+          <Link
+            href="/inventario"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
-          <Link href="/reportes" className={styles.navItem}>
+          <Link
+            href="/reportes"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
@@ -157,13 +194,22 @@ function DashboardAdmin({
       {/* Contenido Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.breadcrumb}>
-            <span>Panel</span>
-            <span>/</span>
-            <span className={styles.breadcrumbActive}>Dashboard General</span>
+          <div className={styles.headerLeft}>
+            <button
+              className={styles.menuBtn}
+              onClick={() => setMenuAbierto(true)}
+              aria-label="Abrir menú de navegación"
+            >
+              <IconMenu />
+            </button>
+            <div className={styles.breadcrumb}>
+              <span>Panel</span>
+              <span>/</span>
+              <span className={styles.breadcrumbActive}>Dashboard</span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className={styles.headerRight}>
             <ThemeToggle />
 
             <div className={styles.userInfo}>

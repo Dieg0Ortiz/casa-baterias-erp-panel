@@ -33,6 +33,8 @@ import {
   IconCard,
   IconCash,
   IconRefresh,
+  IconMenu,
+  IconClose,
 } from '@/components/Icons';
 import styles from './reportes.module.css';
 
@@ -70,10 +72,11 @@ export default function ReportesPage() {
     );
   }
 
-  return <Reportes salir={salir} />;
+  return <ReportesAdmin />;
 }
 
-function Reportes({ salir }: { salir: () => void }) {
+function ReportesAdmin() {
+  const router = useRouter();
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [empleados, setEmpleados] = useState<Empleado[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -87,6 +90,7 @@ function Reportes({ salir }: { salir: () => void }) {
   const [reporte, setReporte] = useState<ReporteVentas | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   const tieneFiltrosActivos = Boolean(
     sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte,
@@ -160,32 +164,54 @@ function Reportes({ salir }: { salir: () => void }) {
     });
   }
 
+  function salir() {
+    logout();
+    router.replace('/login');
+    router.refresh();
+  }
+
   return (
     <div className={styles.layout}>
-      {/* Sidebar Persistente */}
-      <aside className={styles.sidebar}>
+      {menuAbierto && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setMenuAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
-          <div>
-            <h1 className={styles.brandTitle}>Casa Baterías</h1>
-            <p className={styles.brandSubtitle}>Control Central</p>
+          <div className={styles.brandInfo}>
+            <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
+            <div>
+              <h1 className={styles.brandTitle}>Casa Baterías</h1>
+              <p className={styles.brandSubtitle}>Control Central</p>
+            </div>
           </div>
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setMenuAbierto(false)}
+            aria-label="Cerrar menú"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className={styles.nav}>
-          <Link href="/" className={styles.navItem}>
+          <Link href="/" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
-          <Link href="/catalogo" className={styles.navItem}>
+          <Link href="/catalogo" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
-          <Link href="/inventario" className={styles.navItem}>
+          <Link href="/inventario" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
-          <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`} onClick={() => setMenuAbierto(false)}>
             <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
@@ -199,19 +225,26 @@ function Reportes({ salir }: { salir: () => void }) {
         </div>
       </aside>
 
-      {/* Contenido Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.breadcrumb}>
-            <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
-            <span>/</span>
-            <span className={styles.breadcrumbActive}>Auditoría y Reportes de Ventas</span>
+          <div className={styles.headerLeft}>
+            <button
+              className={styles.menuBtn}
+              onClick={() => setMenuAbierto(true)}
+              aria-label="Abrir menú de navegación"
+            >
+              <IconMenu />
+            </button>
+            <div className={styles.breadcrumb}>
+              <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+              <span>/</span>
+              <span className={styles.breadcrumbActive}>Auditoría y Reportes de Ventas</span>
+            </div>
           </div>
           <ThemeToggle />
         </header>
 
         <main className={styles.mainContent}>
-          {/* Card de Filtros */}
           <section className={styles.filterCard}>
             <div className={styles.filterHeader}>
               <h2 className={styles.filterTitle}>Filtros de Búsqueda</h2>

@@ -27,6 +27,7 @@ import {
   IconClose,
   IconAdd,
   IconDelete,
+  IconMenu,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
@@ -92,6 +93,8 @@ function InventarioAdmin() {
   const [modalTransf, setModalTransf] = useState(false);
   const [modalReabastecer, setModalReabastecer] = useState(false);
   const [modalAjustar, setModalAjustar] = useState<AjustarState | null>(null);
+  const [operando, setOperando] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   useEffect(() => {
     let activo = true;
@@ -135,6 +138,12 @@ function InventarioAdmin() {
     }
   }
 
+  function salir() {
+    logout();
+    router.replace('/login');
+    router.refresh();
+  }
+
   async function vaciarExistenciaDirecta(item: ItemInventario) {
     if (!item.producto_id) return;
     const sucursalNombre =
@@ -144,24 +153,20 @@ function InventarioAdmin() {
     );
     if (!confirmacion) return;
 
-    setCargando(true);
+    setOperando(true);
     setError(null);
     try {
       await eliminarExistencias({
         producto_id: item.producto_id,
         sucursal_id: item.sucursal_id,
+        cantidad: item.cantidad,
       });
       await cargar(sucursalId);
     } catch (e) {
       setError(mensajeError(e));
-      setCargando(false);
+    } finally {
+      setOperando(false);
     }
-  }
-
-  function salir() {
-    logout();
-    router.replace('/login');
-    router.refresh();
   }
 
   const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0);
@@ -171,30 +176,64 @@ function InventarioAdmin() {
 
   return (
     <div className={styles.layout}>
-      {/* Sidebar Persistente */}
-      <aside className={styles.sidebar}>
+      {/* Backdrop para cerrar menú móvil al hacer tap fuera */}
+      {menuAbierto && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setMenuAbierto(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Persistente y Drawer Móvil */}
+      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
-          <span style={{ color: 'var(--primary)', display: 'flex' }}><IconBolt /></span>
-          <div>
-            <h1 className={styles.brandTitle}>Casa Baterías</h1>
-            <p className={styles.brandSubtitle}>Control Central</p>
+          <div className={styles.brandInfo}>
+            <span className={styles.brandIcon}><IconBolt /></span>
+            <div>
+              <h1 className={styles.brandTitle}>Casa Baterías</h1>
+              <p className={styles.brandSubtitle}>Control Central</p>
+            </div>
           </div>
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setMenuAbierto(false)}
+            aria-label="Cerrar menú"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className={styles.nav}>
-          <Link href="/" className={styles.navItem}>
+          <Link
+            href="/"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconDashboard className={styles.navIcon} />
             <span>Dashboard</span>
           </Link>
-          <Link href="/catalogo" className={styles.navItem}>
+          <Link
+            href="/catalogo"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconCatalog className={styles.navIcon} />
             <span>Catálogo</span>
           </Link>
-          <Link href="/inventario" className={`${styles.navItem} ${styles.navItemActive}`}>
+          <Link
+            href="/inventario"
+            className={`${styles.navItem} ${styles.navItemActive}`}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
           </Link>
-          <Link href="/reportes" className={styles.navItem}>
+          <Link
+            href="/reportes"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
             <IconReports className={styles.navIcon} />
             <span>Reportes</span>
           </Link>
@@ -211,10 +250,19 @@ function InventarioAdmin() {
       {/* Contenido Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.breadcrumb}>
-            <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
-            <span>/</span>
-            <span className={styles.breadcrumbActive}>Inventario y Existencias</span>
+          <div className={styles.headerLeft}>
+            <button
+              className={styles.menuBtn}
+              onClick={() => setMenuAbierto(true)}
+              aria-label="Abrir menú de navegación"
+            >
+              <IconMenu />
+            </button>
+            <div className={styles.breadcrumb}>
+              <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+              <span>/</span>
+              <span className={styles.breadcrumbActive}>Inventario</span>
+            </div>
           </div>
           <ThemeToggle />
         </header>
