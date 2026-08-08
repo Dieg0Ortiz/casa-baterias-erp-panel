@@ -773,7 +773,7 @@ function NuevoProductoModal({
               placeholder="Automático (CB...) o ingresa uno de fábrica"
             />
             <span className={styles.helperText}>
-              ⚡ Si se deja vacío, el sistema generará automáticamente un código único oficial (CB...).
+              Si se deja vacío, el sistema generará automáticamente un código único oficial (CB...).
             </span>
           </label>
           <label className={styles.field}>
