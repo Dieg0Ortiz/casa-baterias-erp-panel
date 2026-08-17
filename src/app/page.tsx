@@ -27,6 +27,7 @@ import {
   IconCash,
   IconMenu,
   IconClose,
+  IconCasco,
 } from '@/components/Icons';
 import styles from './home.module.css';
 
@@ -172,6 +173,14 @@ function DashboardAdmin({
           >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
+          </Link>
+          <Link
+            href="/cascos"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconCasco className={styles.navIcon} />
+            <span>Cascos</span>
           </Link>
           <Link
             href="/reportes"

@@ -259,3 +259,15 @@ export function IconMenu(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconCasco(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="2" y="7" width="16" height="12" rx="2" />
+      <line x1="6" y1="11" x2="6" y2="15" />
+      <line x1="10" y1="11" x2="10" y2="15" />
+      <line x1="14" y1="11" x2="14" y2="15" />
+      <path d="M22 11v4" />
+    </svg>
+  );
+}

@@ -35,6 +35,7 @@ import {
   IconDelete,
   IconClose,
   IconMenu,
+  IconCasco,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
 
@@ -230,6 +231,14 @@ function CatalogoAdmin() {
           >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
+          </Link>
+          <Link
+            href="/cascos"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconCasco className={styles.navIcon} />
+            <span>Cascos</span>
           </Link>
           <Link
             href="/reportes"
@@ -443,7 +452,18 @@ function CatalogoAdmin() {
                             {totalExistencias}
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            {producto.requiere_casco ? 'Sí' : 'No'}
+                            {producto.requiere_casco ? (
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--primary, #0d6efd)' }}>Sí</span>
+                                {producto.comision_casco != null && Number(producto.comision_casco) > 0 && (
+                                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '2px', fontWeight: 600 }}>
+                                    +{formatearDinero(Number(producto.comision_casco))} s/casco
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--muted, #888)' }}>No</span>
+                            )}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             {producto.activo ? (
@@ -723,6 +743,7 @@ function NuevoProductoModal({
   const [precio, setPrecio] = useState('');
   const [precio2, setPrecio2] = useState('');
   const [precio3, setPrecio3] = useState('');
+  const [comisionCasco, setComisionCasco] = useState('');
   const [requiereCasco, setRequiereCasco] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -763,6 +784,15 @@ function NuevoProductoModal({
       }
     }
 
+    let comisionNum: number | undefined = undefined;
+    if (requiereCasco && comisionCasco.trim()) {
+      comisionNum = Number(comisionCasco);
+      if (Number.isNaN(comisionNum) || comisionNum < 0) {
+        setError('Ingresa una comisión de casco válida (mayor o igual a cero).');
+        return;
+      }
+    }
+
     const cantNum = Number(cantidadInicial);
     if (Number.isNaN(cantNum) || cantNum < 0) {
       setError('Ingresa una cantidad inicial válida.');
@@ -780,6 +810,7 @@ function NuevoProductoModal({
         precio: precioNum,
         precio_2: p2Num,
         precio_3: p3Num,
+        comision_casco: comisionNum,
         requiere_casco: requiereCasco,
         sucursal_id: sucursalId,
         cantidad_inicial: cantNum,
@@ -917,6 +948,22 @@ function NuevoProductoModal({
           <span>Requiere entregar casco/batería vieja a cambio</span>
         </label>
 
+        {requiereCasco && (
+          <label className={styles.field} style={{ marginTop: '0.25rem' }}>
+            <span className={styles.fieldLabel}>Comisión por NO dejar casco ($ MXN)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={comisionCasco}
+              onChange={(e) => setComisionCasco(e.target.value)}
+              placeholder="Ej. 300.00 (monto extra si el cliente no deja batería vieja)"
+            />
+            <span className={styles.helperText}>
+              Este monto se cobrará extra al cliente si se lleva la batería sin casco. Tendrá 15 días para entregar un casco y recuperar su dinero.
+            </span>
+          </label>
+        )}
+
         {error && <p className={styles.errorBanner}>{error}</p>}
 
         <div className={styles.modalFooter}>
@@ -951,6 +998,7 @@ function EditarProductoModal({
   const [precio, setPrecio] = useState(String(producto.precio));
   const [precio2, setPrecio2] = useState(producto.precio_2 != null ? String(producto.precio_2) : '');
   const [precio3, setPrecio3] = useState(producto.precio_3 != null ? String(producto.precio_3) : '');
+  const [comisionCasco, setComisionCasco] = useState(producto.comision_casco != null ? String(producto.comision_casco) : '');
   const [requiereCasco, setRequiereCasco] = useState(producto.requiere_casco);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -983,6 +1031,15 @@ function EditarProductoModal({
       }
     }
 
+    let comisionNum: number | undefined = undefined;
+    if (requiereCasco && comisionCasco.trim()) {
+      comisionNum = Number(comisionCasco);
+      if (Number.isNaN(comisionNum) || comisionNum < 0) {
+        setError('Ingresa una comisión de casco válida (mayor o igual a cero).');
+        return;
+      }
+    }
+
     setGuardando(true);
     setError(null);
     try {
@@ -993,6 +1050,7 @@ function EditarProductoModal({
         precio: precioNum,
         precio_2: p2Num,
         precio_3: p3Num,
+        comision_casco: requiereCasco ? comisionNum : 0,
         requiere_casco: requiereCasco,
       });
       await onGuardado();
@@ -1096,6 +1154,22 @@ function EditarProductoModal({
           />
           <span>Requiere entregar casco/batería vieja a cambio</span>
         </label>
+
+        {requiereCasco && (
+          <label className={styles.field} style={{ marginTop: '0.25rem' }}>
+            <span className={styles.fieldLabel}>Comisión por NO dejar casco ($ MXN)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={comisionCasco}
+              onChange={(e) => setComisionCasco(e.target.value)}
+              placeholder="Ej. 300.00 (monto extra si el cliente no deja batería vieja)"
+            />
+            <span className={styles.helperText}>
+              Este monto se cobrará extra al cliente si se lleva la batería sin casco. Tendrá 15 días para entregar un casco y recuperar su dinero.
+            </span>
+          </label>
+        )}
 
         {error && <p className={styles.errorBanner}>{error}</p>}
 

@@ -35,6 +35,7 @@ import {
   IconRefresh,
   IconMenu,
   IconClose,
+  IconCasco,
 } from '@/components/Icons';
 import styles from './reportes.module.css';
 
@@ -210,6 +211,14 @@ function ReportesAdmin() {
           <Link href="/inventario" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
+          </Link>
+          <Link
+            href="/cascos"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconCasco className={styles.navIcon} />
+            <span>Cascos</span>
           </Link>
           <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`} onClick={() => setMenuAbierto(false)}>
             <IconReports className={styles.navIcon} />

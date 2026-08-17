@@ -28,6 +28,7 @@ import {
   IconAdd,
   IconDelete,
   IconMenu,
+  IconCasco,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
@@ -228,6 +229,14 @@ function InventarioAdmin() {
           >
             <IconInventory className={styles.navIcon} />
             <span>Inventario</span>
+          </Link>
+          <Link
+            href="/cascos"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconCasco className={styles.navIcon} />
+            <span>Cascos</span>
           </Link>
           <Link
             href="/reportes"

@@ -26,6 +26,7 @@ export interface Producto {
   precio: number;
   precio_2?: number | null;
   precio_3?: number | null;
+  comision_casco?: number | null;
   requiere_casco: boolean;
   codigo_barras: string;
   codigo_barras_origen: string;
@@ -41,6 +42,7 @@ export interface NuevoProductoInput {
   precio: number;
   precio_2?: number;
   precio_3?: number;
+  comision_casco?: number;
   requiere_casco?: boolean;
   codigo_barras_fabrica?: string;
   sucursal_id?: string;
@@ -54,6 +56,7 @@ export interface EditarProductoInput {
   precio?: number;
   precio_2?: number;
   precio_3?: number;
+  comision_casco?: number;
   requiere_casco?: boolean;
 }
 

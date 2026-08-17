@@ -105,3 +105,39 @@ export function obtenerReporteVentas(filtros: FiltrosReporte) {
   const q = params.toString();
   return api<ReporteVentas>(`/admin/reportes/ventas${q ? `?${q}` : ''}`);
 }
+
+// ----- Cascos Pendientes (sistema de comisión por depósito de baterías) -----
+
+export interface CascoPendiente {
+  id: string;
+  folio: string | null;
+  producto: string | null;
+  sucursal: string | null;
+  comision_cobrada: number;
+  fecha_limite: string;
+  estado: 'pendiente' | 'resuelto' | 'vencido';
+  monto_devuelto: number;
+  nombre_cliente: string | null;
+  telefono_cliente: string | null;
+  notas: string | null;
+  resuelto_por: string | null;
+  resuelto_en: string | null;
+  created_at: string;
+}
+
+export interface ResolverCascoInput {
+  monto_devuelto: number;
+  casco_producto_id?: string;
+  notas?: string;
+}
+
+export function listarCascosPendientes() {
+  return api<CascoPendiente[]>('/admin/cascos-pendientes');
+}
+
+export function resolverCasco(id: string, input: ResolverCascoInput) {
+  return api<unknown>(`/admin/cascos-pendientes/${id}/resolver`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
