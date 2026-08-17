@@ -29,6 +29,7 @@ import {
   IconDelete,
   IconCasco,
   IconUsers,
+  IconMenu,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
