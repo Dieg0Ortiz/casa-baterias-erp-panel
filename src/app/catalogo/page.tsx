@@ -386,14 +386,14 @@ function CatalogoAdmin() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th>Modelo</th>
-                      <th>Marca</th>
-                      <th>Código de Barras</th>
-                      <th style={{ textAlign: 'right' }}>Precios de Venta</th>
-                      <th style={{ textAlign: 'right' }}>Stock Total</th>
-                      <th style={{ textAlign: 'center' }}>Requiere Casco</th>
-                      <th style={{ textAlign: 'center' }}>Estado</th>
-                      <th style={{ textAlign: 'center' }}>Acciones</th>
+                      <th style={{ minWidth: '180px' }}>Modelo / Especificaciones</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Marca</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Código de Barras</th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Precios de Venta</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Stock</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Casco</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Estado</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -412,19 +412,19 @@ function CatalogoAdmin() {
                           key={producto.id}
                           className={producto.activo ? undefined : styles.rowInactive}
                         >
-                          <td>
-                            <strong>{producto.modelo}</strong>
+                          <td style={{ maxWidth: '250px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{producto.modelo}</div>
                             {producto.descripcion && (
-                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.3, marginTop: '2px' }}>
                                 {producto.descripcion}
                               </div>
                             )}
                           </td>
-                          <td>{producto.marcas?.nombre ?? '—'}</td>
-                          <td className="mono" style={{ color: 'var(--text-secondary)' }}>
+                          <td style={{ whiteSpace: 'nowrap' }}>{producto.marcas?.nombre ?? '—'}</td>
+                          <td className="mono" style={{ color: 'var(--text-secondary)', fontSize: '11px', whiteSpace: 'nowrap' }}>
                             {producto.codigo_barras}
                           </td>
-                          <td className="mono" style={{ textAlign: 'right' }}>
+                          <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
                               {formatearDinero(producto.precio)}
                             </div>
@@ -448,31 +448,31 @@ function CatalogoAdmin() {
                               </div>
                             )}
                           </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
+                          <td className="mono" style={{ textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' }}>
                             {totalExistencias}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {producto.requiere_casco ? (
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--primary, #0d6efd)' }}>Sí</span>
                                 {producto.comision_casco != null && Number(producto.comision_casco) > 0 && (
-                                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '2px', fontWeight: 600 }}>
+                                  <div style={{ fontSize: '10px', color: '#dc2626', marginTop: '1px', fontWeight: 600 }}>
                                     +{formatearDinero(Number(producto.comision_casco))} s/casco
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <span style={{ color: 'var(--muted, #888)' }}>No</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>No</span>
                             )}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {producto.activo ? (
                               <span className={styles.badgeActivo}>Activo</span>
                             ) : (
                               <span className={styles.badgeBaja}>Baja</span>
                             )}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <div className={styles.itemActions}>
                               <button
                                 className={styles.btnPriceAction}

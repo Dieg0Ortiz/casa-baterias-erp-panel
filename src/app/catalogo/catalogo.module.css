@@ -25,7 +25,7 @@
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebar {
     width: 280px;
     transform: translateX(-100%);
@@ -95,7 +95,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebarCloseBtn {
     display: flex;
   }
@@ -174,7 +174,7 @@
   width: calc(100% - 240px);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .mainWrapper {
     margin-left: 0;
     width: 100%;
@@ -222,7 +222,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .menuBtn {
     display: flex;
   }
@@ -278,7 +278,6 @@
 .cardHeader {
   padding: 14px 20px;
   border-bottom: 1px solid var(--outline-variant);
-  background: var(--surface-container-low);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -287,10 +286,8 @@
 }
 
 .cardTitle {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -298,7 +295,7 @@
 }
 
 .btnPrimarySm {
-  padding: 7px 14px;
+  padding: 6px 14px;
   background: var(--primary);
   color: var(--on-primary);
   border: none;
@@ -307,10 +304,10 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
 }
 
 .btnPrimarySm:hover:not(:disabled) {
@@ -322,48 +319,41 @@
   cursor: not-allowed;
 }
 
-/* Marcas en formato Grid */
+/* Grilla de Marcas */
 .brandsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
   padding: 16px 20px;
-  background: var(--surface);
-}
-
-@media (max-width: 640px) {
-  .brandsGrid {
-    grid-template-columns: 1fr;
-    padding: 14px;
-  }
 }
 
 .brandChip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .brandChip:hover {
-  background: var(--surface-container);
-  border-color: rgba(129, 140, 248, 0.4);
+  border-color: var(--primary);
+  background: var(--surface);
 }
 
 .brandName {
-  font-size: 13px;
   font-weight: 600;
+  font-size: 13px;
   color: var(--text-primary);
 }
 
 .brandDesc {
   font-size: 11px;
-  color: var(--text-secondary);
-  margin-top: 1px;
+  color: var(--text-muted);
+  margin-top: 2px;
   max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
@@ -452,11 +442,12 @@
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
-  min-width: 680px;
+  min-width: 0;
+  table-layout: auto;
 }
 
 .table th {
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -468,10 +459,11 @@
 }
 
 .table td {
-  padding: 12px 16px;
+  padding: 10px 12px;
   color: var(--text-primary);
   border-bottom: 1px solid var(--outline-variant);
-  white-space: nowrap;
+  font-size: 13px;
+  vertical-align: middle;
 }
 
 .table tbody tr {
