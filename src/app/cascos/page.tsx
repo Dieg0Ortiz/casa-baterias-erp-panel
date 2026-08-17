@@ -351,27 +351,24 @@ export default function CascosPage() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ whiteSpace: 'nowrap', minWidth: '150px' }}>Folio</th>
-                    <th style={{ minWidth: '180px' }}>Batería Vendida</th>
-                    <th style={{ minWidth: '130px' }}>Cliente</th>
-                    <th style={{ whiteSpace: 'nowrap' }}>Sucursal</th>
-                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Comisión Retenida</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Plazo Límite (15 días)</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Estado</th>
-                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Devolución</th>
-                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Acciones</th>
+                    <th style={{ width: '22%' }}>Folio y Fecha</th>
+                    <th style={{ width: '28%' }}>Batería y Cliente</th>
+                    <th style={{ width: '14%' }}>Sucursal</th>
+                    <th style={{ width: '14%', textAlign: 'right' }}>Depósito en Garantía</th>
+                    <th style={{ width: '12%', textAlign: 'center' }}>Vigencia y Estado</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cargando ? (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
                         Cargando registros de cascos…
                       </td>
                     </tr>
                   ) : cascosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
                         No se encontraron registros de cascos con los filtros aplicados.
                       </td>
                     </tr>
@@ -384,12 +381,11 @@ export default function CascosPage() {
 
                       return (
                         <tr key={casco.id}>
-                          <td className="mono" style={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--primary)' }}>
-                            {casco.folio ?? '—'}
-                          </td>
-                          <td style={{ maxWidth: '220px' }}>
-                            <div style={{ fontWeight: 600 }}>{casco.producto ?? 'Batería'}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          <td>
+                            <div className="mono" style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '13px' }}>
+                              {casco.folio ?? '—'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
                               {new Date(casco.created_at).toLocaleDateString('es-MX', {
                                 day: '2-digit',
                                 month: 'short',
@@ -399,64 +395,54 @@ export default function CascosPage() {
                               })}
                             </div>
                           </td>
-                          <td style={{ maxWidth: '160px' }}>
-                            {casco.nombre_cliente ? (
-                              <div>
-                                <div style={{ fontWeight: 600 }}>{casco.nombre_cliente}</div>
-                                {casco.telefono_cliente && (
-                                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                    {casco.telefono_cliente}
-                                  </div>
-                                )}
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                              {casco.producto ?? 'Batería'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              {casco.nombre_cliente
+                                ? `${casco.nombre_cliente}${casco.telefono_cliente ? ` · ${casco.telefono_cliente}` : ''}`
+                                : 'Sin cliente registrado'}
+                            </div>
+                          </td>
+                          <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            {casco.sucursal ?? '—'}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '13px' }}>
+                              {formatearDinero(casco.comision_cobrada)}
+                            </div>
+                            {casco.estado === 'resuelto' && casco.monto_devuelto > 0 && (
+                              <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
+                                Devuelto: {formatearDinero(casco.monto_devuelto)}
                               </div>
-                            ) : (
-                              <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin registrar</span>
                             )}
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{casco.sucursal ?? '—'}</td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
-                            {formatearDinero(casco.comision_cobrada)}
-                          </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td style={{ textAlign: 'center' }}>
                             <div>
-                              <span style={{ fontSize: '12px' }}>
-                                {new Date(casco.fecha_limite).toLocaleDateString('es-MX', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                })}
-                              </span>
+                              {casco.estado === 'resuelto' ? (
+                                <span className={styles.badgeResuelto}>Resuelto</span>
+                              ) : vencido ? (
+                                <span className={styles.badgeVencido}>Vencido</span>
+                              ) : esUrgente ? (
+                                <span className={styles.badgeUrgente}>Por vencer</span>
+                              ) : (
+                                <span className={styles.badgePendiente}>Pendiente</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>
+                              {new Date(casco.fecha_limite).toLocaleDateString('es-MX', {
+                                day: '2-digit',
+                                month: 'short',
+                              })}
                               {esPendiente && (
-                                <div className={`${styles.diasRestantes} ${esUrgente || vencido ? styles.diasUrgente : styles.diasNormal}`}>
-                                  {vencido
-                                    ? `Venció hace ${Math.abs(dias)}d`
-                                    : dias === 0
-                                    ? 'Vence hoy'
-                                    : `${dias} días restantes`}
-                                </div>
+                                <span style={{ color: esUrgente || vencido ? '#dc2626' : 'inherit', fontWeight: esUrgente || vencido ? 700 : 500 }}>
+                                  {' '}({vencido ? `Venció hace ${Math.abs(dias)}d` : dias === 0 ? 'Vence hoy' : `${dias}d rest.`})
+                                </span>
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            {casco.estado === 'resuelto' ? (
-                              <span className={styles.badgeResuelto}>Resuelto</span>
-                            ) : vencido ? (
-                              <span className={styles.badgeVencido}>Vencido</span>
-                            ) : esUrgente ? (
-                              <span className={styles.badgeUrgente}>Por vencer</span>
-                            ) : (
-                              <span className={styles.badgePendiente}>Pendiente</span>
-                            )}
-                          </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                            {casco.estado === 'resuelto' ? (
-                              <span style={{ color: '#16a34a' }}>
-                                {formatearDinero(casco.monto_devuelto)}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--text-muted)' }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <td style={{ textAlign: 'center' }}>
                             {casco.estado === 'pendiente' ? (
                               <button
                                 className={styles.btnResolver}
