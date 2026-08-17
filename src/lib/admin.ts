@@ -82,10 +82,38 @@ export interface ReporteVentas {
 
 export interface Empleado {
   id: string;
+  email?: string | null;
   nombre_completo: string;
-  rol: string;
+  rol: 'administrador' | 'trabajador';
   sucursal_id: string | null;
+  sucursal?: string | null;
   activo: boolean;
+  created_at?: string | null;
+}
+
+export interface SucursalItem {
+  id: string;
+  nombre: string;
+  es_matriz: boolean;
+  activo?: boolean;
+}
+
+export interface CrearUsuarioInput {
+  email: string;
+  password: string;
+  nombre: string;
+  apellido: string;
+  rol?: 'administrador' | 'trabajador';
+  sucursal_id?: string;
+}
+
+export interface ActualizarUsuarioInput {
+  nombre?: string;
+  apellido?: string;
+  rol?: 'administrador' | 'trabajador';
+  sucursal_id?: string | null;
+  activo?: boolean;
+  password?: string;
 }
 
 export interface FiltrosReporte {
@@ -102,6 +130,24 @@ export function obtenerDashboard() {
 
 export function listarEmpleados() {
   return api<Empleado[]>('/admin/usuarios');
+}
+
+export function listarSucursales() {
+  return api<SucursalItem[]>('/admin/sucursales');
+}
+
+export function crearUsuario(input: CrearUsuarioInput) {
+  return api<Empleado>('/admin/usuarios', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function actualizarUsuario(id: string, input: ActualizarUsuarioInput) {
+  return api<{ success: boolean }>(`/admin/usuarios/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 export function obtenerReporteVentas(filtros: FiltrosReporte) {

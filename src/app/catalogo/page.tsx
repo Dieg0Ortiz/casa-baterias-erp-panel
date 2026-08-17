@@ -36,6 +36,7 @@ import {
   IconClose,
   IconMenu,
   IconCasco,
+  IconUsers,
 } from '@/components/Icons';
 import styles from './catalogo.module.css';
 
@@ -239,6 +240,14 @@ function CatalogoAdmin() {
           >
             <IconCasco className={styles.navIcon} />
             <span>Cascos</span>
+          </Link>
+          <Link
+            href="/usuarios"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconUsers className={styles.navIcon} />
+            <span>Trabajadores / Usuarios</span>
           </Link>
           <Link
             href="/reportes"

@@ -39,6 +39,7 @@ import {
   IconReceipt,
   IconSales,
   IconSplit,
+  IconUsers,
 } from '@/components/Icons';
 import styles from './reportes.module.css';
 
@@ -222,6 +223,14 @@ function ReportesAdmin() {
           >
             <IconCasco className={styles.navIcon} />
             <span>Cascos</span>
+          </Link>
+          <Link
+            href="/usuarios"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconUsers className={styles.navIcon} />
+            <span>Trabajadores / Usuarios</span>
           </Link>
           <Link href="/reportes" className={`${styles.navItem} ${styles.navItemActive}`} onClick={() => setMenuAbierto(false)}>
             <IconReports className={styles.navIcon} />

@@ -28,6 +28,7 @@ import {
   IconMenu,
   IconClose,
   IconCasco,
+  IconUsers,
 } from '@/components/Icons';
 import styles from './home.module.css';
 
@@ -181,6 +182,14 @@ function DashboardAdmin({
           >
             <IconCasco className={styles.navIcon} />
             <span>Cascos</span>
+          </Link>
+          <Link
+            href="/usuarios"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconUsers className={styles.navIcon} />
+            <span>Trabajadores / Usuarios</span>
           </Link>
           <Link
             href="/reportes"
