@@ -351,15 +351,15 @@ export default function CascosPage() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>Folio Venta</th>
-                    <th>Batería Vendida</th>
-                    <th>Cliente</th>
-                    <th>Sucursal</th>
-                    <th style={{ textAlign: 'right' }}>Comisión Retenida</th>
-                    <th style={{ textAlign: 'center' }}>Plazo Límite (15 días)</th>
-                    <th style={{ textAlign: 'center' }}>Estado</th>
-                    <th style={{ textAlign: 'right' }}>Devolución</th>
-                    <th style={{ textAlign: 'center' }}>Acciones</th>
+                    <th style={{ whiteSpace: 'nowrap', minWidth: '150px' }}>Folio</th>
+                    <th style={{ minWidth: '180px' }}>Batería Vendida</th>
+                    <th style={{ minWidth: '130px' }}>Cliente</th>
+                    <th style={{ whiteSpace: 'nowrap' }}>Sucursal</th>
+                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Comisión Retenida</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Plazo Límite (15 días)</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Estado</th>
+                    <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Devolución</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,10 +384,10 @@ export default function CascosPage() {
 
                       return (
                         <tr key={casco.id}>
-                          <td className="mono" style={{ fontWeight: 700 }}>
+                          <td className="mono" style={{ fontWeight: 700, whiteSpace: 'nowrap', color: 'var(--primary)' }}>
                             {casco.folio ?? '—'}
                           </td>
-                          <td>
+                          <td style={{ maxWidth: '220px' }}>
                             <div style={{ fontWeight: 600 }}>{casco.producto ?? 'Batería'}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                               {new Date(casco.created_at).toLocaleDateString('es-MX', {
@@ -399,7 +399,7 @@ export default function CascosPage() {
                               })}
                             </div>
                           </td>
-                          <td>
+                          <td style={{ maxWidth: '160px' }}>
                             {casco.nombre_cliente ? (
                               <div>
                                 <div style={{ fontWeight: 600 }}>{casco.nombre_cliente}</div>
@@ -413,11 +413,11 @@ export default function CascosPage() {
                               <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin registrar</span>
                             )}
                           </td>
-                          <td>{casco.sucursal ?? '—'}</td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
+                          <td style={{ whiteSpace: 'nowrap' }}>{casco.sucursal ?? '—'}</td>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
                             {formatearDinero(casco.comision_cobrada)}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <div>
                               <span style={{ fontSize: '12px' }}>
                                 {new Date(casco.fecha_limite).toLocaleDateString('es-MX', {
@@ -436,7 +436,7 @@ export default function CascosPage() {
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {casco.estado === 'resuelto' ? (
                               <span className={styles.badgeResuelto}>Resuelto</span>
                             ) : vencido ? (
@@ -447,7 +447,7 @@ export default function CascosPage() {
                               <span className={styles.badgePendiente}>Pendiente</span>
                             )}
                           </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
+                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>
                             {casco.estado === 'resuelto' ? (
                               <span style={{ color: '#16a34a' }}>
                                 {formatearDinero(casco.monto_devuelto)}
@@ -456,7 +456,7 @@ export default function CascosPage() {
                               <span style={{ color: 'var(--text-muted)' }}>—</span>
                             )}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {casco.estado === 'pendiente' ? (
                               <button
                                 className={styles.btnResolver}

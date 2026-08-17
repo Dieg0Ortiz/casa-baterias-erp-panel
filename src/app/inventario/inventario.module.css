@@ -25,7 +25,7 @@
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebar {
     width: 280px;
     transform: translateX(-100%);
@@ -95,7 +95,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebarCloseBtn {
     display: flex;
   }
@@ -145,7 +145,7 @@
 .logoutBtn {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -174,7 +174,7 @@
   width: calc(100% - 240px);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .mainWrapper {
     margin-left: 0;
     width: 100%;
@@ -222,7 +222,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .menuBtn {
     display: flex;
   }
@@ -263,6 +263,42 @@
     padding: 16px 16px 36px;
     gap: 16px;
   }
+}
+
+/* Tabla de Inventario */
+.tableScroll {
+  overflow-x: auto;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+  min-width: 0;
+  table-layout: auto;
+}
+
+.table th {
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-bottom: 1px solid var(--outline-variant);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 10px 12px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: 13px;
+  vertical-align: middle;
 }
 
 /* Barra de Filtro y Acciones */

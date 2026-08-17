@@ -26,7 +26,7 @@
   display: none;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebar {
     width: 280px;
     transform: translateX(-100%);
@@ -103,7 +103,7 @@
   cursor: pointer;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .sidebarCloseBtn {
     display: flex;
   }
@@ -178,7 +178,7 @@
   width: calc(100% - 240px);
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .mainWrapper {
     margin-left: 0;
     width: 100%;
@@ -226,7 +226,7 @@
   flex-shrink: 0;
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 900px) {
   .menuBtn {
     display: flex;
   }
