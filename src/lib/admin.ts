@@ -29,6 +29,12 @@ export interface ResumenGeneral {
   valor_esperado_cajas: number;
 }
 
+export interface PagoParcial {
+  metodo: string;
+  monto: number;
+  referencia?: string;
+}
+
 export interface VentaFeed {
   id: string;
   folio: string;
@@ -37,6 +43,7 @@ export interface VentaFeed {
   usuario: string | null;
   created_at: string;
   metodo_pago: string | null;
+  desglose_pago?: PagoParcial[] | null;
 }
 
 export interface Dashboard {
@@ -64,6 +71,7 @@ export interface VentaReporte {
   usuario: string | null;
   created_at: string;
   metodo_pago: string | null;
+  desglose_pago?: PagoParcial[] | null;
   items: ItemVentaReporte[];
 }
 

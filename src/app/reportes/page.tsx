@@ -457,6 +457,7 @@ function ReportesAdmin() {
                             sucursal={venta.sucursal}
                             empleado={venta.usuario}
                             metodoPago={venta.metodo_pago}
+                            desglosePago={venta.desglose_pago}
                             total={venta.total}
                             items={venta.items.map((item) => ({
                               producto: item.producto,
@@ -493,6 +494,7 @@ function VentaFila({
   sucursal,
   empleado,
   metodoPago,
+  desglosePago,
   total,
   items,
 }: {
@@ -501,6 +503,7 @@ function VentaFila({
   sucursal: string | null;
   empleado: string | null;
   metodoPago: string | null;
+  desglosePago?: { metodo: string; monto: number; referencia?: string }[] | null;
   total: number;
   items: {
     producto: string | null;
@@ -512,6 +515,76 @@ function VentaFila({
   }[];
 }) {
   const [abierto, setAbierto] = useState(false);
+
+  const renderMetodoBadge = () => {
+    switch (metodoPago) {
+      case 'tarjeta_debito':
+        return (
+          <span className={styles.paymentMethod} style={{ color: '#0284c7' }}>
+            <IconCard style={{ width: '13px', height: '13px', color: '#0284c7' }} />
+            <span>T. Débito</span>
+          </span>
+        );
+      case 'tarjeta_credito':
+        return (
+          <span className={styles.paymentMethod} style={{ color: '#9333ea' }}>
+            <IconCard style={{ width: '13px', height: '13px', color: '#9333ea' }} />
+            <span>T. Crédito</span>
+          </span>
+        );
+      case 'transferencia':
+        return (
+          <span className={styles.paymentMethod} style={{ color: '#ea580c' }}>
+            <IconBolt style={{ width: '13px', height: '13px', color: '#ea580c' }} />
+            <span>Transferencia</span>
+          </span>
+        );
+      case 'mixto':
+        return (
+          <span
+            className={styles.paymentMethod}
+            style={{
+              color: '#d97706',
+              fontWeight: 700,
+              background: 'rgba(217, 119, 6, 0.12)',
+              padding: '2px 8px',
+              borderRadius: '6px',
+            }}
+          >
+            <span>🔀 Pago Mixto</span>
+          </span>
+        );
+      case 'tarjeta':
+        return (
+          <span className={styles.paymentMethod}>
+            <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
+            <span>Tarjeta</span>
+          </span>
+        );
+      default:
+        return (
+          <span className={styles.paymentMethod}>
+            <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
+            <span>Efectivo</span>
+          </span>
+        );
+    }
+  };
+
+  const formatearNombreMetodo = (m: string) => {
+    switch (m) {
+      case 'tarjeta_debito':
+        return 'Tarjeta Débito';
+      case 'tarjeta_credito':
+        return 'Tarjeta Crédito';
+      case 'transferencia':
+        return 'Transferencia';
+      case 'efectivo':
+        return 'Efectivo';
+      default:
+        return m;
+    }
+  };
 
   return (
     <>
@@ -535,21 +608,7 @@ function VentaFila({
         </td>
         <td>{sucursal ?? '—'}</td>
         <td>{empleado ?? '—'}</td>
-        <td>
-          <span className={styles.paymentMethod}>
-            {metodoPago === 'tarjeta' ? (
-              <>
-                <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
-                <span>Tarjeta</span>
-              </>
-            ) : (
-              <>
-                <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
-                <span>Efectivo</span>
-              </>
-            )}
-          </span>
-        </td>
+        <td>{renderMetodoBadge()}</td>
         <td style={{ textAlign: 'center' }}>
           <span className={styles.badgeItems}>
             {items.reduce((s, it) => s + it.cantidad, 0)} {items.length === 1 ? 'ítem' : 'ítems'}
@@ -563,6 +622,45 @@ function VentaFila({
       {abierto && (
         <tr>
           <td colSpan={7} style={{ background: 'var(--surface-container-low)', padding: '12px 24px' }}>
+            {metodoPago === 'mixto' && desglosePago && desglosePago.length > 0 && (
+              <div
+                style={{
+                  marginBottom: '14px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(217, 119, 6, 0.08)',
+                  border: '1px solid rgba(217, 119, 6, 0.25)',
+                }}
+              >
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#d97706', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Desglose de Pago Combinado:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {desglosePago.map((p, pIdx) => (
+                    <span
+                      key={pIdx}
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '4px 10px',
+                        background: '#ffffff',
+                        border: '1px solid var(--outline-variant)',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span style={{ color: 'var(--text-secondary)' }}>{formatearNombreMetodo(p.metodo)}:</span>
+                      <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                        {formatearDinero(p.monto)}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '6px' }}>
               Productos en Folio {folio}:
             </div>
@@ -620,17 +718,26 @@ function VentaFila({
                               ✓ Con casco
                             </span>
                           ) : (
-                            <span style={{ color: '#dc2626', fontWeight: 700, fontSize: '11px' }}>
-                              Sin casco (+{formatearDinero(it.comisionCasco ?? 0)})
+                            <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '11px' }}>
+                              Sin casco (+{formatearDinero((it.comisionCasco ?? 0) * it.cantidad)})
                             </span>
                           )
                         ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>N/A</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>—</span>
                         )}
                       </td>
                       <td className="mono" style={{ textAlign: 'center', padding: '6px 0' }}>{it.cantidad}</td>
-                      <td className="mono" style={{ textAlign: 'right', padding: '6px 0' }}>{formatearDinero(it.precio)}</td>
-                      <td className="mono" style={{ textAlign: 'right', padding: '6px 0', fontWeight: 600 }}>{formatearDinero(it.cantidad * precioEfectivo)}</td>
+                      <td className="mono" style={{ textAlign: 'right', padding: '6px 0' }}>
+                        {formatearDinero(it.precio)}
+                        {comisionUnit > 0 && (
+                          <div style={{ fontSize: '10px', color: '#dc2626' }}>
+                            + {formatearDinero(comisionUnit)} com.
+                          </div>
+                        )}
+                      </td>
+                      <td className="mono" style={{ textAlign: 'right', padding: '6px 0', fontWeight: 600 }}>
+                        {formatearDinero(precioEfectivo * it.cantidad)}
+                      </td>
                     </tr>
                   );
                 })}
