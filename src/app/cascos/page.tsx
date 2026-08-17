@@ -27,6 +27,7 @@ import {
   IconClose,
   IconMenu,
   IconCasco,
+  IconUsers,
   IconRefresh,
 } from '@/components/Icons';
 import styles from './cascos.module.css';
@@ -249,6 +250,14 @@ export default function CascosPage() {
           >
             <IconCasco className={styles.navIcon} />
             <span>Cascos</span>
+          </Link>
+          <Link
+            href="/usuarios"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconUsers className={styles.navIcon} />
+            <span>Trabajadores / Usuarios</span>
           </Link>
           <Link
             href="/reportes"
