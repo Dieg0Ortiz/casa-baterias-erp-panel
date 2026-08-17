@@ -271,7 +271,6 @@ export default function CascosPage() {
             <div className={`${styles.statCard} ${styles.statCardSuccess}`}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Cascos Resueltos</span>
-                <span style={{ color: '#16a34a', fontWeight: 800 }}>✓</span>
               </div>
               <div className={styles.statValue} style={{ color: '#16a34a' }}>
                 {totalResueltos}
@@ -439,11 +438,11 @@ export default function CascosPage() {
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             {casco.estado === 'resuelto' ? (
-                              <span className={styles.badgeResuelto}>✓ Resuelto</span>
+                              <span className={styles.badgeResuelto}>Resuelto</span>
                             ) : vencido ? (
                               <span className={styles.badgeVencido}>Vencido</span>
                             ) : esUrgente ? (
-                              <span className={styles.badgeUrgente}>⚠️ Por vencer</span>
+                              <span className={styles.badgeUrgente}>Por vencer</span>
                             ) : (
                               <span className={styles.badgePendiente}>Pendiente</span>
                             )}

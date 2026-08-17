@@ -36,6 +36,9 @@ import {
   IconMenu,
   IconClose,
   IconCasco,
+  IconReceipt,
+  IconSales,
+  IconSplit,
 } from '@/components/Icons';
 import styles from './reportes.module.css';
 
@@ -387,20 +390,50 @@ function ReportesAdmin() {
             <>
               <section className={styles.statsGrid}>
                 <div className={styles.statCard}>
+                  <div className={styles.statHeader}>
+                    <span className={styles.statLabel}>Ventas Registradas</span>
+                    <div
+                      className={styles.statIconBadge}
+                      style={{ background: 'rgba(62, 50, 211, 0.1)', color: 'var(--primary)' }}
+                    >
+                      <IconReceipt style={{ width: '18px', height: '18px' }} />
+                    </div>
+                  </div>
                   <div className={`${styles.statValue} mono`}>{reporte.totales.ventas}</div>
-                  <div className={styles.statLabel}>Ventas Registradas</div>
+                  <div className={styles.statSub}>Transacciones completadas</div>
                 </div>
 
                 <div className={styles.statCard}>
-                  <div className={`${styles.statValue} mono`} style={{ color: 'var(--primary)' }}>
+                  <div className={styles.statHeader}>
+                    <span className={styles.statLabel}>Monto Total Recaudado</span>
+                    <div
+                      className={styles.statIconBadge}
+                      style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' }}
+                    >
+                      <IconSales style={{ width: '18px', height: '18px' }} />
+                    </div>
+                  </div>
+                  <div
+                    className={`${styles.statValue} mono`}
+                    style={{ color: 'var(--primary)' }}
+                  >
                     {formatearDinero(reporte.totales.monto)}
                   </div>
-                  <div className={styles.statLabel}>Monto Total Recaudado</div>
+                  <div className={styles.statSub}>Ingresos brutos acumulados</div>
                 </div>
 
                 <div className={styles.statCard}>
+                  <div className={styles.statHeader}>
+                    <span className={styles.statLabel}>Unidades Vendidas</span>
+                    <div
+                      className={styles.statIconBadge}
+                      style={{ background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}
+                    >
+                      <IconInventory style={{ width: '18px', height: '18px' }} />
+                    </div>
+                  </div>
                   <div className={`${styles.statValue} mono`}>{reporte.totales.unidades}</div>
-                  <div className={styles.statLabel}>Baterías y Unidades Vendidas</div>
+                  <div className={styles.statSub}>Baterías y piezas entregadas</div>
                 </div>
               </section>
 
@@ -547,11 +580,15 @@ function VentaFila({
               color: '#d97706',
               fontWeight: 700,
               background: 'rgba(217, 119, 6, 0.12)',
-              padding: '2px 8px',
+              padding: '3px 8px',
               borderRadius: '6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
             }}
           >
-            <span>🔀 Pago Mixto</span>
+            <IconSplit style={{ width: '13px', height: '13px', color: '#d97706' }} />
+            <span>Pago Mixto</span>
           </span>
         );
       case 'tarjeta':
@@ -715,7 +752,7 @@ function VentaFila({
                         {it.conCasco != null ? (
                           it.conCasco ? (
                             <span style={{ color: '#16a34a', fontWeight: 600, fontSize: '11px' }}>
-                              ✓ Con casco
+                              Con casco
                             </span>
                           ) : (
                             <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '11px' }}>
