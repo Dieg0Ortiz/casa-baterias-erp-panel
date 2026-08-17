@@ -7,12 +7,14 @@ import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
 import {
   type Empleado,
-  type SucursalItem,
   actualizarUsuario,
   crearUsuario,
   listarEmpleados,
-  listarSucursales,
 } from '@/lib/admin';
+import {
+  type Sucursal,
+  listarSucursales,
+} from '@/lib/catalogo';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
@@ -42,7 +44,7 @@ export default function UsuariosPage() {
   const { autenticado, perfil } = useSesion();
 
   const [usuarios, setUsuarios] = useState<Empleado[]>([]);
-  const [sucursales, setSucursales] = useState<SucursalItem[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
@@ -472,7 +474,7 @@ function ModalCrearUsuario({
   onCerrar,
   onGuardado,
 }: {
-  sucursales: SucursalItem[];
+  sucursales: Sucursal[];
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
@@ -482,9 +484,28 @@ function ModalCrearUsuario({
   const [password, setPassword] = useState('');
   const [rol, setRol] = useState<'trabajador' | 'administrador'>('trabajador');
   const [sucursalId, setSucursalId] = useState(sucursales[0]?.id ?? '');
+  const [listaSucursales, setListaSucursales] = useState<Sucursal[]>(sucursales);
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sucursales.length > 0) {
+      setListaSucursales(sucursales);
+      if (!sucursalId && sucursales.length > 0) {
+        setSucursalId(sucursales[0].id);
+      }
+    } else {
+      listarSucursales()
+        .then((sucs) => {
+          setListaSucursales(sucs);
+          if (sucs.length > 0 && !sucursalId) {
+            setSucursalId(sucs[0].id);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [sucursales, sucursalId]);
 
   function generarPasswordAleatoria() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
@@ -630,7 +651,7 @@ function ModalCrearUsuario({
                 onChange={(e) => setSucursalId(e.target.value)}
               >
                 <option value="">-- Sin sucursal fija --</option>
-                {sucursales.map((s) => (
+                {listaSucursales.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
                   </option>
@@ -662,7 +683,7 @@ function ModalEditarUsuario({
   onGuardado,
 }: {
   usuario: Empleado;
-  sucursales: SucursalItem[];
+  sucursales: Sucursal[];
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
@@ -671,8 +692,19 @@ function ModalEditarUsuario({
   const [sucursalId, setSucursalId] = useState(usuario.sucursal_id ?? '');
   const [activo, setActivo] = useState(usuario.activo);
   const [nuevaPassword, setNuevaPassword] = useState('');
+  const [listaSucursales, setListaSucursales] = useState<Sucursal[]>(sucursales);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (sucursales.length > 0) {
+      setListaSucursales(sucursales);
+    } else {
+      listarSucursales()
+        .then((sucs) => setListaSucursales(sucs))
+        .catch(() => {});
+    }
+  }, [sucursales]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -754,7 +786,7 @@ function ModalEditarUsuario({
                 onChange={(e) => setSucursalId(e.target.value)}
               >
                 <option value="">-- Sin sucursal fija --</option>
-                {sucursales.map((s) => (
+                {listaSucursales.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
                   </option>
