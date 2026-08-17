@@ -7,6 +7,8 @@ export interface ItemInventario {
   codigo_barras: string | null;
   marca: string | null;
   precio: number;
+  precio_2?: number | null;
+  precio_3?: number | null;
   requiere_casco: boolean;
   cantidad: number;
   cascos_disponibles: number;
@@ -53,9 +55,6 @@ export interface CorregirSucursalInput {
   sucursal_destino_id: string;
 }
 
-// Corrección de sucursal: mueve TODA la existencia de un producto dado de
-// alta en la sucursal equivocada a la correcta, SIN registrar una
-// transferencia. Las transferencias quedan para movimientos legítimos.
 export function corregirSucursal(input: CorregirSucursalInput) {
   return api<unknown>('/inventory/corregir-sucursal', {
     method: 'POST',
@@ -67,7 +66,6 @@ export interface ReabastecerInput {
   producto_id: string;
   sucursal_id: string;
   cantidad: number;
-  nota?: string;
 }
 
 export function reabastecerInventario(input: ReabastecerInput) {
@@ -77,14 +75,28 @@ export function reabastecerInventario(input: ReabastecerInput) {
   });
 }
 
-export interface EliminarExistenciaInput {
+export interface AjustarInventarioInput {
   producto_id: string;
   sucursal_id: string;
-  cantidad?: number;
+  cantidad: number;
+  motivo?: string;
 }
 
-export function eliminarExistencias(input: EliminarExistenciaInput) {
-  return api<unknown>('/inventory/eliminar-existencia', {
+export function ajustarInventario(input: AjustarInventarioInput) {
+  return api<unknown>('/inventory/ajustar', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface EliminarExistenciasInput {
+  producto_id: string;
+  sucursal_id: string;
+  cantidad: number;
+}
+
+export function eliminarExistencias(input: EliminarExistenciasInput) {
+  return api<unknown>('/inventory/eliminar-existencias', {
     method: 'POST',
     body: JSON.stringify(input),
   });

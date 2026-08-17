@@ -453,6 +453,7 @@ function ReportesAdmin() {
                               producto: item.producto,
                               cantidad: item.cantidad,
                               precio: item.precio_unitario,
+                              tipoPrecio: item.tipo_precio,
                             }))}
                           />
                         ))}
@@ -490,7 +491,12 @@ function VentaFila({
   empleado: string | null;
   metodoPago: string | null;
   total: number;
-  items: { producto: string | null; cantidad: number; precio: number }[];
+  items: {
+    producto: string | null;
+    cantidad: number;
+    precio: number;
+    tipoPrecio?: string | null;
+  }[];
 }) {
   const [abierto, setAbierto] = useState(false);
 
@@ -551,6 +557,7 @@ function VentaFila({
               <thead>
                 <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--outline-variant)' }}>
                   <th style={{ textAlign: 'left', padding: '4px 0' }}>Producto / Batería</th>
+                  <th style={{ textAlign: 'center', padding: '4px 0' }}>Opción de Precio</th>
                   <th style={{ textAlign: 'center', padding: '4px 0' }}>Cantidad</th>
                   <th style={{ textAlign: 'right', padding: '4px 0' }}>Precio Unitario</th>
                   <th style={{ textAlign: 'right', padding: '4px 0' }}>Subtotal</th>
@@ -560,6 +567,35 @@ function VentaFila({
                 {items.map((it, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                     <td style={{ padding: '6px 0', fontWeight: 600 }}>{it.producto ?? 'Sin nombre'}</td>
+                    <td style={{ textAlign: 'center', padding: '6px 0' }}>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          fontFamily: 'monospace',
+                          background:
+                            it.tipoPrecio === 'precio_2'
+                              ? 'rgba(234, 88, 12, 0.12)'
+                              : it.tipoPrecio === 'precio_3'
+                              ? 'rgba(147, 51, 234, 0.12)'
+                              : 'rgba(62, 50, 211, 0.1)',
+                          color:
+                            it.tipoPrecio === 'precio_2'
+                              ? '#ea580c'
+                              : it.tipoPrecio === 'precio_3'
+                              ? '#9333ea'
+                              : 'var(--primary)',
+                        }}
+                      >
+                        {it.tipoPrecio === 'precio_2'
+                          ? 'Precio 2'
+                          : it.tipoPrecio === 'precio_3'
+                          ? 'Precio 3'
+                          : 'Precio Default'}
+                      </span>
+                    </td>
                     <td className="mono" style={{ textAlign: 'center', padding: '6px 0' }}>{it.cantidad}</td>
                     <td className="mono" style={{ textAlign: 'right', padding: '6px 0' }}>{formatearDinero(it.precio)}</td>
                     <td className="mono" style={{ textAlign: 'right', padding: '6px 0', fontWeight: 600 }}>{formatearDinero(it.cantidad * it.precio)}</td>

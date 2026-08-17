@@ -51,6 +51,7 @@ export interface ItemVentaReporte {
   producto: string | null;
   cantidad: number;
   precio_unitario: number;
+  tipo_precio?: string | null;
 }
 
 export interface VentaReporte {
@@ -101,6 +102,6 @@ export function obtenerReporteVentas(filtros: FiltrosReporte) {
   if (filtros.fecha_hasta) params.set('fecha_hasta', filtros.fecha_hasta);
   if (filtros.usuario_id) params.set('usuario_id', filtros.usuario_id);
   if (filtros.producto_id) params.set('producto_id', filtros.producto_id);
-  const qs = params.toString();
-  return api<ReporteVentas>(`/admin/ventas${qs ? `?${qs}` : ''}`);
+  const q = params.toString();
+  return api<ReporteVentas>(`/admin/reportes/ventas${q ? `?${q}` : ''}`);
 }

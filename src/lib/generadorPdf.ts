@@ -228,7 +228,15 @@ export function generarReporteVentasPdf({
       venta.items.length === 0
         ? '—'
         : venta.items
-            .map((it) => `${it.producto ?? 'Producto'} (x${it.cantidad})`)
+            .map((it) => {
+              const optLabel =
+                it.tipo_precio === 'precio_2'
+                  ? ' [Precio 2]'
+                  : it.tipo_precio === 'precio_3'
+                  ? ' [Precio 3]'
+                  : '';
+              return `${it.producto ?? 'Producto'}${optLabel} (x${it.cantidad})`;
+            })
             .join(', ');
 
     const metodo = (venta.metodo_pago ?? 'efectivo').toUpperCase();

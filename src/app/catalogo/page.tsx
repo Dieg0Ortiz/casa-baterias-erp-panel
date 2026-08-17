@@ -380,7 +380,7 @@ function CatalogoAdmin() {
                       <th>Modelo</th>
                       <th>Marca</th>
                       <th>Código de Barras</th>
-                      <th style={{ textAlign: 'right' }}>Precio</th>
+                      <th style={{ textAlign: 'right' }}>Precios de Venta</th>
                       <th style={{ textAlign: 'right' }}>Stock Total</th>
                       <th style={{ textAlign: 'center' }}>Requiere Casco</th>
                       <th style={{ textAlign: 'center' }}>Estado</th>
@@ -415,8 +415,29 @@ function CatalogoAdmin() {
                           <td className="mono" style={{ color: 'var(--text-secondary)' }}>
                             {producto.codigo_barras}
                           </td>
-                          <td className="mono" style={{ textAlign: 'right', fontWeight: 600, color: 'var(--primary)' }}>
-                            {formatearDinero(producto.precio)}
+                          <td className="mono" style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                              {formatearDinero(producto.precio)}
+                            </div>
+                            {(producto.precio_2 != null || producto.precio_3 != null) && (
+                              <div
+                                style={{
+                                  fontSize: '10px',
+                                  color: 'var(--text-secondary)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '1px',
+                                  marginTop: '2px',
+                                }}
+                              >
+                                {producto.precio_2 != null && (
+                                  <span>P2: {formatearDinero(producto.precio_2)}</span>
+                                )}
+                                {producto.precio_3 != null && (
+                                  <span>P3: {formatearDinero(producto.precio_3)}</span>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="mono" style={{ textAlign: 'right', fontWeight: 700 }}>
                             {totalExistencias}
@@ -437,7 +458,7 @@ function CatalogoAdmin() {
                                 className={styles.btnPriceAction}
                                 onClick={() => setModal({ tipo: 'editarProducto', producto })}
                                 disabled={operando || !producto.activo}
-                                title="Editar datos y precio del producto"
+                                title="Editar datos y precios del producto"
                               >
                                 <IconEdit style={{ width: '12px', height: '12px' }} />
                                 <span>Editar</span>
@@ -700,6 +721,8 @@ function NuevoProductoModal({
   const [codigoBarras, setCodigoBarras] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState('');
+  const [precio2, setPrecio2] = useState('');
+  const [precio3, setPrecio3] = useState('');
   const [requiereCasco, setRequiereCasco] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -719,10 +742,27 @@ function NuevoProductoModal({
       return;
     }
     const precioNum = Number(precio);
-    if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Ingresa un precio válido (mayor o igual a cero).');
+    if (Number.isNaN(precioNum) || precioNum < 0 || precio.trim() === '') {
+      setError('Ingresa un precio default válido (mayor o igual a cero).');
       return;
     }
+    let p2Num: number | undefined = undefined;
+    if (precio2.trim()) {
+      p2Num = Number(precio2);
+      if (Number.isNaN(p2Num) || p2Num < 0) {
+        setError('Ingresa un Precio 2 válido (mayor o igual a cero).');
+        return;
+      }
+    }
+    let p3Num: number | undefined = undefined;
+    if (precio3.trim()) {
+      p3Num = Number(precio3);
+      if (Number.isNaN(p3Num) || p3Num < 0) {
+        setError('Ingresa un Precio 3 válido (mayor o igual a cero).');
+        return;
+      }
+    }
+
     const cantNum = Number(cantidadInicial);
     if (Number.isNaN(cantNum) || cantNum < 0) {
       setError('Ingresa una cantidad inicial válida.');
@@ -738,6 +778,8 @@ function NuevoProductoModal({
         codigo_barras_fabrica: codigoBarras.trim() || undefined,
         descripcion: descripcion.trim() || undefined,
         precio: precioNum,
+        precio_2: p2Num,
+        precio_3: p3Num,
         requiere_casco: requiereCasco,
         sucursal_id: sucursalId,
         cantidad_inicial: cantNum,
@@ -822,13 +864,36 @@ function NuevoProductoModal({
             </span>
           </label>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Precio de Venta ($ MXN)</span>
+            <span className={styles.fieldLabel}>Precio 1 (Default / Público) *</span>
             <input
               className={styles.input}
               inputMode="decimal"
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
               placeholder="1850.00"
+            />
+          </label>
+        </div>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio 2 (Opcional - e.g. Mayoreo / Taller)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio2}
+              onChange={(e) => setPrecio2(e.target.value)}
+              placeholder="1700.00"
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio 3 (Opcional - e.g. Especial)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio3}
+              onChange={(e) => setPrecio3(e.target.value)}
+              placeholder="1600.00"
             />
           </label>
         </div>
@@ -884,6 +949,8 @@ function EditarProductoModal({
   const [modelo, setModelo] = useState(producto.modelo);
   const [descripcion, setDescripcion] = useState(producto.descripcion ?? '');
   const [precio, setPrecio] = useState(String(producto.precio));
+  const [precio2, setPrecio2] = useState(producto.precio_2 != null ? String(producto.precio_2) : '');
+  const [precio3, setPrecio3] = useState(producto.precio_3 != null ? String(producto.precio_3) : '');
   const [requiereCasco, setRequiereCasco] = useState(producto.requiere_casco);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -895,9 +962,25 @@ function EditarProductoModal({
       return;
     }
     const precioNum = Number(precio);
-    if (Number.isNaN(precioNum) || precioNum < 0) {
-      setError('Ingresa un precio válido (mayor o igual a cero).');
+    if (Number.isNaN(precioNum) || precioNum < 0 || precio.trim() === '') {
+      setError('Ingresa un precio default válido (mayor o igual a cero).');
       return;
+    }
+    let p2Num: number | undefined = undefined;
+    if (precio2.trim()) {
+      p2Num = Number(precio2);
+      if (Number.isNaN(p2Num) || p2Num < 0) {
+        setError('Ingresa un Precio 2 válido (mayor o igual a cero).');
+        return;
+      }
+    }
+    let p3Num: number | undefined = undefined;
+    if (precio3.trim()) {
+      p3Num = Number(precio3);
+      if (Number.isNaN(p3Num) || p3Num < 0) {
+        setError('Ingresa un Precio 3 válido (mayor o igual a cero).');
+        return;
+      }
     }
 
     setGuardando(true);
@@ -908,6 +991,8 @@ function EditarProductoModal({
         modelo: modelo.trim(),
         descripcion: descripcion.trim() || undefined,
         precio: precioNum,
+        precio_2: p2Num,
+        precio_3: p3Num,
         requiere_casco: requiereCasco,
       });
       await onGuardado();
@@ -949,7 +1034,7 @@ function EditarProductoModal({
 
         <div className={styles.formRow}>
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Precio de Venta ($ MXN)</span>
+            <span className={styles.fieldLabel}>Precio 1 (Default / Público) *</span>
             <input
               className={styles.input}
               inputMode="decimal"
@@ -968,6 +1053,29 @@ function EditarProductoModal({
               style={{ opacity: 0.7, background: 'var(--surface-container-low)' }}
             />
           </div>
+        </div>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio 2 (Opcional - e.g. Mayoreo)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio2}
+              onChange={(e) => setPrecio2(e.target.value)}
+              placeholder="Dejar vacío si no aplica"
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio 3 (Opcional - e.g. Especial)</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precio3}
+              onChange={(e) => setPrecio3(e.target.value)}
+              placeholder="Dejar vacío si no aplica"
+            />
+          </label>
         </div>
 
         <label className={styles.field}>

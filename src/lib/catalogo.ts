@@ -24,6 +24,8 @@ export interface Producto {
   modelo: string;
   descripcion: string | null;
   precio: number;
+  precio_2?: number | null;
+  precio_3?: number | null;
   requiere_casco: boolean;
   codigo_barras: string;
   codigo_barras_origen: string;
@@ -37,6 +39,8 @@ export interface NuevoProductoInput {
   modelo: string;
   descripcion?: string;
   precio: number;
+  precio_2?: number;
+  precio_3?: number;
   requiere_casco?: boolean;
   codigo_barras_fabrica?: string;
   sucursal_id?: string;
@@ -48,6 +52,8 @@ export interface EditarProductoInput {
   modelo?: string;
   descripcion?: string;
   precio?: number;
+  precio_2?: number;
+  precio_3?: number;
   requiere_casco?: boolean;
 }
 
@@ -103,10 +109,15 @@ export function actualizarProducto(id: string, cambios: EditarProductoInput) {
   });
 }
 
-export function actualizarPrecio(id: string, precio: number) {
+export function actualizarPrecio(
+  id: string,
+  precio: number,
+  precio_2?: number,
+  precio_3?: number,
+) {
   return api<unknown>(`/catalog/productos/${id}/precio`, {
     method: 'PATCH',
-    body: JSON.stringify({ precio }),
+    body: JSON.stringify({ precio, precio_2, precio_3 }),
   });
 }
 
