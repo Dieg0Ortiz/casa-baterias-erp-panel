@@ -372,6 +372,133 @@
   gap: 8px;
 }
 
+.mainTabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--outline-variant);
+  margin-bottom: 4px;
+}
+
+.mainTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mainTab:hover {
+  color: var(--text-primary);
+  background: var(--surface-container-low);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.mainTabActive {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
+}
+
+.modelCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.modelCard {
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.modelCard:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.modelCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.modelCardTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modelCardSubtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.modelCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  background: rgba(129, 140, 248, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.modelCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--outline-variant);
+  padding-top: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.radioGroup {
+  display: flex;
+  gap: 10px;
+}
+
+.radioOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: all 0.15s ease;
+}
+
+.radioOptionSelected {
+  background: rgba(129, 140, 248, 0.08);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 .toolbar {
   padding: 12px 20px;
   border-bottom: 1px solid var(--outline-variant);

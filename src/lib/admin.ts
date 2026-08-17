@@ -121,6 +121,8 @@ export interface CascoPendiente {
   id: string;
   folio: string | null;
   producto: string | null;
+  casco_producto_id?: string | null;
+  casco_recibido?: string | null;
   sucursal: string | null;
   comision_cobrada: number;
   fecha_limite: string;
