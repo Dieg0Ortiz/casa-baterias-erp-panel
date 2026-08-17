@@ -46,12 +46,13 @@ export interface Dashboard {
   ultimas_ventas: VentaFeed[];
 }
 
-// Tipos del reporte de ventas (Fase 8).
 export interface ItemVentaReporte {
   producto: string | null;
   cantidad: number;
   precio_unitario: number;
   tipo_precio?: string | null;
+  con_casco?: boolean | null;
+  comision_casco?: number | null;
 }
 
 export interface VentaReporte {
