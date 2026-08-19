@@ -737,20 +737,26 @@ function VentaFila({
                             fontWeight: 600,
                             fontFamily: 'monospace',
                             background:
-                              it.tipoPrecio === 'precio_2'
+                              it.tipoPrecio === 'precio_especial'
+                                ? 'rgba(217, 70, 239, 0.12)'
+                                : it.tipoPrecio === 'precio_2'
                                 ? 'rgba(234, 88, 12, 0.12)'
                                 : it.tipoPrecio === 'precio_3'
                                 ? 'rgba(147, 51, 234, 0.12)'
                                 : 'rgba(62, 50, 211, 0.1)',
                             color:
-                              it.tipoPrecio === 'precio_2'
+                              it.tipoPrecio === 'precio_especial'
+                                ? '#d946ef'
+                                : it.tipoPrecio === 'precio_2'
                                 ? '#ea580c'
                                 : it.tipoPrecio === 'precio_3'
                                 ? '#9333ea'
                                 : 'var(--primary)',
                           }}
                         >
-                          {it.tipoPrecio === 'precio_2'
+                          {it.tipoPrecio === 'precio_especial'
+                            ? 'Precio Especial'
+                            : it.tipoPrecio === 'precio_2'
                             ? 'Precio 2'
                             : it.tipoPrecio === 'precio_3'
                             ? 'Precio 3'

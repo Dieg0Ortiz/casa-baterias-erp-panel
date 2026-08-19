@@ -230,7 +230,9 @@ export function generarReporteVentasPdf({
         : venta.items
             .map((it) => {
               const optLabel =
-                it.tipo_precio === 'precio_2'
+                it.tipo_precio === 'precio_especial'
+                  ? ' [P. Especial]'
+                  : it.tipo_precio === 'precio_2'
                   ? ' [Precio 2]'
                   : it.tipo_precio === 'precio_3'
                   ? ' [Precio 3]'
