@@ -8,8 +8,10 @@ import { logout, useSesion } from '@/lib/auth';
 import {
   type Empleado,
   type ReporteVentas,
+  type UtilidadReporte,
   listarEmpleados,
   obtenerReporteVentas,
+  obtenerReporteUtilidades,
 } from '@/lib/admin';
 import {
   type Producto,
@@ -93,12 +95,13 @@ function ReportesAdmin() {
   const [fechaHasta, setFechaHasta] = useState(hoyLocal());
 
   const [reporte, setReporte] = useState<ReporteVentas | null>(null);
+  const [reporteUtilidad, setReporteUtilidad] = useState<UtilidadReporte | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   const tieneFiltrosActivos = Boolean(
-    sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte,
+    sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte || reporteUtilidad,
   );
 
   function reiniciarFiltros() {
@@ -108,6 +111,7 @@ function ReportesAdmin() {
     setFechaDesde('');
     setFechaHasta(hoyLocal());
     setReporte(null);
+    setReporteUtilidad(null);
     setError(null);
   }
 
@@ -138,14 +142,18 @@ function ReportesAdmin() {
     setCargando(true);
     setError(null);
     try {
-      const datos = await obtenerReporteVentas({
-        sucursal_id: sucursalId || undefined,
-        usuario_id: usuarioId || undefined,
-        producto_id: productoId || undefined,
-        fecha_desde: fechaDesde || undefined,
-        fecha_hasta: fechaHasta || undefined,
-      });
-      setReporte(datos);
+      const [datosVentas, datosUtilidades] = await Promise.all([
+        obtenerReporteVentas({
+          sucursal_id: sucursalId || undefined,
+          usuario_id: usuarioId || undefined,
+          producto_id: productoId || undefined,
+          fecha_desde: fechaDesde || undefined,
+          fecha_hasta: fechaHasta || undefined,
+        }),
+        obtenerReporteUtilidades(fechaDesde || undefined, fechaHasta || undefined)
+      ]);
+      setReporte(datosVentas);
+      setReporteUtilidad(datosUtilidades);
     } catch (e) {
       setError(mensajeError(e));
     } finally {
@@ -444,6 +452,29 @@ function ReportesAdmin() {
                   <div className={`${styles.statValue} mono`}>{reporte.totales.unidades}</div>
                   <div className={styles.statSub}>Baterías y piezas entregadas</div>
                 </div>
+
+                {reporteUtilidad && (
+                  <div className={styles.statCard}>
+                    <div className={styles.statHeader}>
+                      <span className={styles.statLabel}>Utilidad Neta (Ganancia)</span>
+                      <div
+                        className={styles.statIconBadge}
+                        style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' }}
+                      >
+                        <IconCash style={{ width: '18px', height: '18px' }} />
+                      </div>
+                    </div>
+                    <div
+                      className={`${styles.statValue} mono`}
+                      style={{ color: '#16a34a' }}
+                    >
+                      {formatearDinero(reporteUtilidad.totalUtilidad)}
+                    </div>
+                    <div className={styles.statSub}>
+                      Costo Inv: {formatearDinero(reporteUtilidad.totalCosto)}
+                    </div>
+                  </div>
+                )}
               </section>
 
               <section className={styles.bentoCard}>

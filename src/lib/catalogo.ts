@@ -24,6 +24,7 @@ export interface Producto {
   modelo: string;
   descripcion: string | null;
   precio: number;
+  precio_compra?: number;
   precio_2?: number | null;
   precio_3?: number | null;
   comision_casco?: number | null;
@@ -40,6 +41,7 @@ export interface NuevoProductoInput {
   modelo: string;
   descripcion?: string;
   precio: number;
+  precio_compra?: number;
   precio_2?: number;
   precio_3?: number;
   comision_casco?: number;
@@ -54,6 +56,7 @@ export interface EditarProductoInput {
   modelo?: string;
   descripcion?: string;
   precio?: number;
+  precio_compra?: number;
   precio_2?: number;
   precio_3?: number;
   comision_casco?: number;

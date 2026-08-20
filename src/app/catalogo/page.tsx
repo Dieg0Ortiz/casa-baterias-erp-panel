@@ -398,7 +398,9 @@ function CatalogoAdmin() {
                       <th style={{ minWidth: '180px' }}>Modelo / Especificaciones</th>
                       <th style={{ whiteSpace: 'nowrap' }}>Marca</th>
                       <th style={{ whiteSpace: 'nowrap' }}>Código de Barras</th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Precio Compra</th>
                       <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Precios de Venta</th>
+                      <th style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>Utilidad</th>
                       <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Stock</th>
                       <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Casco</th>
                       <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Estado</th>
@@ -434,6 +436,11 @@ function CatalogoAdmin() {
                             {producto.codigo_barras}
                           </td>
                           <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ color: 'var(--text-primary)' }}>
+                              {formatearDinero(producto.precio_compra ?? 0)}
+                            </div>
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
                               {formatearDinero(producto.precio)}
                             </div>
@@ -456,6 +463,11 @@ function CatalogoAdmin() {
                                 )}
                               </div>
                             )}
+                          </td>
+                          <td className="mono" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--success, #16a34a)' }}>
+                              {formatearDinero(producto.precio - (producto.precio_compra ?? 0))}
+                            </div>
                           </td>
                           <td className="mono" style={{ textAlign: 'center', fontWeight: 700, whiteSpace: 'nowrap' }}>
                             {totalExistencias}
@@ -749,6 +761,7 @@ function NuevoProductoModal({
   const [modelo, setModelo] = useState('');
   const [codigoBarras, setCodigoBarras] = useState('');
   const [descripcion, setDescripcion] = useState('');
+  const [precioCompra, setPrecioCompra] = useState('');
   const [precio, setPrecio] = useState('');
   const [precio2, setPrecio2] = useState('');
   const [precio3, setPrecio3] = useState('');
@@ -808,6 +821,12 @@ function NuevoProductoModal({
       return;
     }
 
+    const precioCompraNum = precioCompra.trim() ? Number(precioCompra) : 0;
+    if (Number.isNaN(precioCompraNum) || precioCompraNum < 0) {
+      setError('Ingresa un Precio de Compra válido (mayor o igual a cero).');
+      return;
+    }
+
     setGuardando(true);
     setError(null);
     try {
@@ -819,6 +838,7 @@ function NuevoProductoModal({
         precio: precioNum,
         precio_2: p2Num,
         precio_3: p3Num,
+        precio_compra: precioCompraNum,
         comision_casco: comisionNum,
         requiere_casco: requiereCasco,
         sucursal_id: sucursalId,
@@ -917,6 +937,16 @@ function NuevoProductoModal({
 
         <div className={styles.formRow}>
           <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio Compra / Costo *</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precioCompra}
+              onChange={(e) => setPrecioCompra(e.target.value)}
+              placeholder="1200.00"
+            />
+          </label>
+          <label className={styles.field}>
             <span className={styles.fieldLabel}>Precio 2 (Opcional - e.g. Mayoreo / Taller)</span>
             <input
               className={styles.input}
@@ -1004,6 +1034,7 @@ function EditarProductoModal({
   const [marcaId, setMarcaId] = useState(marcaActual);
   const [modelo, setModelo] = useState(producto.modelo);
   const [descripcion, setDescripcion] = useState(producto.descripcion ?? '');
+  const [precioCompra, setPrecioCompra] = useState(producto.precio_compra != null ? String(producto.precio_compra) : '0');
   const [precio, setPrecio] = useState(String(producto.precio));
   const [precio2, setPrecio2] = useState(producto.precio_2 != null ? String(producto.precio_2) : '');
   const [precio3, setPrecio3] = useState(producto.precio_3 != null ? String(producto.precio_3) : '');
@@ -1049,6 +1080,12 @@ function EditarProductoModal({
       }
     }
 
+    const precioCompraNum = precioCompra.trim() ? Number(precioCompra) : 0;
+    if (Number.isNaN(precioCompraNum) || precioCompraNum < 0) {
+      setError('Ingresa un Precio de Compra válido (mayor o igual a cero).');
+      return;
+    }
+
     setGuardando(true);
     setError(null);
     try {
@@ -1059,6 +1096,7 @@ function EditarProductoModal({
         precio: precioNum,
         precio_2: p2Num,
         precio_3: p3Num,
+        precio_compra: precioCompraNum,
         comision_casco: requiereCasco ? comisionNum : 0,
         requiere_casco: requiereCasco,
       });
@@ -1123,6 +1161,16 @@ function EditarProductoModal({
         </div>
 
         <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Precio Compra / Costo *</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={precioCompra}
+              onChange={(e) => setPrecioCompra(e.target.value)}
+              placeholder="0.00"
+            />
+          </label>
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Precio 2 (Opcional - e.g. Mayoreo)</span>
             <input

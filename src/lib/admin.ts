@@ -161,6 +161,21 @@ export function obtenerReporteVentas(filtros: FiltrosReporte) {
   return api<ReporteVentas>(`/admin/reportes/ventas${q ? `?${q}` : ''}`);
 }
 
+export interface UtilidadReporte {
+  totalVentas: number;
+  totalCosto: number;
+  totalUtilidad: number;
+  items: any[];
+}
+
+export function obtenerReporteUtilidades(fechaInicio?: string, fechaFin?: string) {
+  const params = new URLSearchParams();
+  if (fechaInicio) params.set('fechaInicio', fechaInicio);
+  if (fechaFin) params.set('fechaFin', fechaFin);
+  const q = params.toString();
+  return api<UtilidadReporte>(`/reports/utilidades${q ? `?${q}` : ''}`);
+}
+
 // ----- Cascos Pendientes (sistema de comisión por depósito de baterías) -----
 
 export interface CascoPendiente {
