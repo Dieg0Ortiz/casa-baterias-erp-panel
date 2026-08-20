@@ -342,7 +342,7 @@ function InventarioAdmin() {
                 title="Agregar más existencias de un producto existente"
               >
                 <IconAdd style={{ width: '14px', height: '14px' }} />
-                <span>+ Entrada de Inventario</span>
+                <span>Entrada de Inventario</span>
               </button>
 
               <button
