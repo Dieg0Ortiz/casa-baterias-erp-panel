@@ -260,6 +260,14 @@ function InventarioAdmin() {
             <span>Trabajadores / Usuarios</span>
           </Link>
           <Link
+            href="/compras"
+            className={styles.navItem}
+            onClick={() => setMenuAbierto(false)}
+          >
+            <IconInventory className={styles.navIcon} />
+            <span>Compras</span>
+          </Link>
+          <Link
             href="/reportes"
             className={styles.navItem}
             onClick={() => setMenuAbierto(false)}
