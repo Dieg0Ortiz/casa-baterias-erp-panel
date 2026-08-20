@@ -31,6 +31,8 @@ import {
   IconUsers,
   IconMenu,
   IconSearch,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
@@ -99,6 +101,8 @@ function InventarioAdmin() {
   const [operando, setOperando] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [filtro, setFiltro] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const ITEMS_POR_PAGINA = 10;
 
   useEffect(() => {
     let activo = true;
@@ -187,6 +191,14 @@ function InventarioAdmin() {
       (i.marca ?? '').toLowerCase().includes(f)
     );
   });
+
+  const totalPaginas = Math.ceil(itemsVisibles.length / ITEMS_POR_PAGINA) || 1;
+  const indiceInicio = (pagina - 1) * ITEMS_POR_PAGINA;
+  const itemsPaginados = itemsVisibles.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [filtro, sucursalId]);
 
   return (
     <div className={styles.layout}>
@@ -428,7 +440,7 @@ function InventarioAdmin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {itemsVisibles.map((item) => (
+                    {itemsPaginados.map((item) => (
                       <tr key={`${item.sucursal_id}-${item.producto_id}`}>
                         <td><strong>{item.modelo ?? '—'}</strong></td>
                         <td>{item.marca ?? '—'}</td>
@@ -491,6 +503,48 @@ function InventarioAdmin() {
                 </table>
               )}
             </div>
+
+            {/* Barra de Paginación */}
+            {itemsVisibles.length > 0 && (
+              <div className={styles.paginationBar}>
+                <div className={styles.paginationInfo}>
+                  Mostrando {indiceInicio + 1} - {Math.min(indiceInicio + ITEMS_POR_PAGINA, itemsVisibles.length)} de {itemsVisibles.length} productos
+                </div>
+
+                <div className={styles.paginationControls}>
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    onClick={() => setPagina(p => Math.max(1, p - 1))}
+                    disabled={pagina === 1}
+                    title="Página anterior"
+                  >
+                    <IconChevronLeft />
+                  </button>
+
+                  {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(num => (
+                    <button
+                      key={num}
+                      type="button"
+                      className={`${styles.pageBtn} ${pagina === num ? styles.pageBtnActive : ''}`}
+                      onClick={() => setPagina(num)}
+                    >
+                      {num}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className={styles.pageBtn}
+                    onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                    disabled={pagina === totalPaginas}
+                    title="Página siguiente"
+                  >
+                    <IconChevronRight />
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Historial de Transferencias */}
