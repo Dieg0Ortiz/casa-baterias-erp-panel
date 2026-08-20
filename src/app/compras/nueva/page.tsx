@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useSesion } from '@/lib/auth';
+import { useSesion, logout } from '@/lib/auth';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CompraItemInput, Proveedor, listarProveedores, registrarCompra } from '@/lib/purchases';
 import { Producto, Sucursal, formatearDinero, listarProductos, listarSucursales } from '@/lib/catalogo';
@@ -14,20 +14,24 @@ import {
   IconCatalog,
   IconInventory,
   IconReports,
+  IconLogout,
   IconMenu,
   IconCasco,
   IconUsers,
   IconAdd,
   IconDelete,
   IconSearch,
+  IconClose,
 } from '@/components/Icons';
-import styles from '../../catalogo/catalogo.module.css';
+import styles from '../compras.module.css';
 
 interface ItemCarrito {
-  id_carrito: string; // ID temporal
+  id_carrito: string;
   tipo_item: 'bateria' | 'casco';
-  producto_id: string; // Para casco, enviaremos un id dummy o el id no importará tanto en la BDD
+  producto_id: string;
   descripcion: string;
+  marca?: string;
+  codigo?: string;
   cantidad: number;
   precio_unitario: number;
 }
@@ -39,7 +43,7 @@ export default function NuevaCompraPage() {
 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -47,13 +51,13 @@ export default function NuevaCompraPage() {
   const [sucursalId, setSucursalId] = useState('');
   const [proveedorId, setProveedorId] = useState('');
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
-  
-  const [tipoAgregando, setTipoAgregando] = useState<'bateria'|'casco'>('bateria');
-  const [productoSelec, setProductoSelec] = useState('');
+
+  const [tipoAgregando, setTipoAgregando] = useState<'bateria' | 'casco'>('bateria');
+  const [productoSelec, setProductoSelec] = useState<Producto | null>(null);
   const [filtroBaterias, setFiltroBaterias] = useState('');
   const [cantSelec, setCantSelec] = useState('1');
   const [costoSelec, setCostoSelec] = useState('');
-  
+
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
@@ -63,20 +67,32 @@ export default function NuevaCompraPage() {
   useEffect(() => {
     async function load() {
       if (!autenticado || perfil?.rol !== 'administrador') return;
+      setCargando(true);
+      setError(null);
       try {
-        const [prov, suc, prod] = await Promise.all([
-          listarProveedores(),
+        const [suc, prod] = await Promise.all([
           listarSucursales(),
           listarProductos(),
         ]);
-        setProveedores(prov);
-        setSucursales(suc);
-        setProductos(prod);
-        
-        if (suc.length > 0) setSucursalId(suc[0].id);
-        if (prod.length > 0) setProductoSelec(prod[0].id);
+        setSucursales(suc ?? []);
+        const prodsActivos = (prod ?? []).filter((p) => p.activo);
+        setProductos(prodsActivos);
+
+        if (suc && suc.length > 0) setSucursalId(suc[0].id);
+        if (prodsActivos.length > 0) {
+          setProductoSelec(prodsActivos[0]);
+          setCostoSelec(prodsActivos[0].precio_compra != null ? String(prodsActivos[0].precio_compra) : '');
+        }
+
+        // Cargar proveedores de forma tolerante (por si la API aún se está desplegando)
+        try {
+          const prov = await listarProveedores();
+          setProveedores(prov ?? []);
+        } catch {
+          // Proveedores es opcional, no bloqueamos la pantalla
+        }
       } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Error al cargar datos base');
+        setError(err instanceof ApiError ? err.message : 'Error al cargar catálogo y sucursales');
       } finally {
         setCargando(false);
       }
@@ -84,69 +100,70 @@ export default function NuevaCompraPage() {
     void load();
   }, [autenticado, perfil]);
 
-  if (!autenticado) return null;
+  function salir() {
+    logout();
+    router.replace('/login');
+    router.refresh();
+  }
 
-  if (perfil?.rol !== 'administrador') {
-    return (
-      <div className={styles.lockedPage}>
-        <div className={styles.lockedCard}>
-          <h1>Acceso restringido</h1>
-          <p>Este panel es solo para administradores.</p>
-          <Link href="/" className={styles.btnPrimarySm}>Volver</Link>
-        </div>
-      </div>
-    );
+  function seleccionarProducto(p: Producto) {
+    setProductoSelec(p);
+    setCostoSelec(p.precio_compra != null && p.precio_compra > 0 ? String(p.precio_compra) : '');
   }
 
   function agregarAlCarrito(e: FormEvent) {
     e.preventDefault();
-    
+
     const cantidad = Number(cantSelec);
     if (isNaN(cantidad) || cantidad <= 0) {
-      alert('La cantidad debe ser mayor a 0');
+      alert('Ingresa una cantidad válida mayor a 0');
       return;
     }
-    
+
     const costo = Number(costoSelec);
     if (isNaN(costo) || costo < 0 || costoSelec.trim() === '') {
-      alert('El costo debe ser un número válido mayor o igual a 0');
+      alert('Ingresa un costo unitario válido (ej. 1200.00)');
       return;
     }
 
-    let descripcion = '';
-    let prodId = '';
-
     if (tipoAgregando === 'bateria') {
-      const p = productos.find(x => x.id === productoSelec);
-      if (!p) {
-        alert('Selecciona un producto válido');
+      if (!productoSelec) {
+        alert('Selecciona una batería del listado');
         return;
       }
-      descripcion = p.modelo + (p.marcas?.nombre ? ` (${p.marcas.nombre})` : '');
-      prodId = p.id;
+
+      setCarrito([
+        ...carrito,
+        {
+          id_carrito: Math.random().toString(36).substring(7),
+          tipo_item: 'bateria',
+          producto_id: productoSelec.id,
+          descripcion: productoSelec.modelo,
+          marca: productoSelec.marcas?.nombre,
+          codigo: productoSelec.codigo_barras,
+          cantidad,
+          precio_unitario: costo,
+        },
+      ]);
     } else {
-      descripcion = 'Cascos (Compra por Lote)';
-      // Para cascos mandaremos null o vacío en el backend. 
-      // El RPC los distingue por el tipo_item = 'casco' y el p_producto_id se ignora.
-      // Usaremos un ID falso para el frontend.
-      prodId = 'casco-000';
+      setCarrito([
+        ...carrito,
+        {
+          id_carrito: Math.random().toString(36).substring(7),
+          tipo_item: 'casco',
+          producto_id: 'casco-lote',
+          descripcion: 'Lote de Cascos / Baterías Viejas',
+          cantidad,
+          precio_unitario: costo,
+        },
+      ]);
     }
 
-    setCarrito([...carrito, {
-      id_carrito: Math.random().toString(36).substring(7),
-      tipo_item: tipoAgregando,
-      producto_id: prodId,
-      descripcion,
-      cantidad,
-      precio_unitario: costo
-    }]);
-
     setCantSelec('1');
-    setCostoSelec('');
   }
 
   function eliminarDelCarrito(id_carrito: string) {
-    setCarrito(carrito.filter(c => c.id_carrito !== id_carrito));
+    setCarrito(carrito.filter((c) => c.id_carrito !== id_carrito));
   }
 
   async function procesarCompra() {
@@ -163,20 +180,20 @@ export default function NuevaCompraPage() {
     setError(null);
 
     try {
-      const items: CompraItemInput[] = carrito.map(c => ({
+      const items: CompraItemInput[] = carrito.map((c) => ({
         tipo_item: c.tipo_item,
-        producto_id: c.tipo_item === 'bateria' ? c.producto_id : null as any,
+        producto_id: c.tipo_item === 'bateria' ? c.producto_id : (null as any),
         cantidad: c.cantidad,
-        precio_unitario: c.precio_unitario
+        precio_unitario: c.precio_unitario,
       }));
 
       await registrarCompra({
         sucursal_id: sucursalId,
         proveedor_id: proveedorId || undefined,
-        items
+        items,
       });
 
-      alert('Compra registrada exitosamente. El inventario ha sido actualizado.');
+      alert('¡Compra registrada exitosamente! El stock y los precios han sido actualizados.');
       router.push('/compras');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Error al registrar la compra');
@@ -184,9 +201,24 @@ export default function NuevaCompraPage() {
     }
   }
 
-  const totalCompra = carrito.reduce((sum, item) => sum + (item.cantidad * item.precio_unitario), 0);
+  if (!autenticado) return null;
 
-  const productosFiltrados = productos.filter(p => {
+  if (perfil?.rol !== 'administrador') {
+    return (
+      <div className={styles.lockedPage}>
+        <div className={styles.lockedCard}>
+          <h1>Acceso restringido</h1>
+          <p>Este panel es solo para administradores.</p>
+          <button className={styles.btnPrimarySm} onClick={salir}>Salir</button>
+        </div>
+      </div>
+    );
+  }
+
+  const totalCompra = carrito.reduce((sum, item) => sum + item.cantidad * item.precio_unitario, 0);
+  const totalArticulos = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+
+  const productosFiltrados = productos.filter((p) => {
     if (!filtroBaterias.trim()) return true;
     const f = filtroBaterias.toLowerCase();
     return (
@@ -202,9 +234,11 @@ export default function NuevaCompraPage() {
         <div
           className={styles.sidebarBackdrop}
           onClick={() => setMenuAbierto(false)}
+          aria-hidden="true"
         />
       )}
 
+      {/* Sidebar */}
       <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandInfo}>
@@ -214,6 +248,13 @@ export default function NuevaCompraPage() {
               <p className={styles.brandSubtitle}>Control Central</p>
             </div>
           </div>
+          <button
+            className={styles.sidebarCloseBtn}
+            onClick={() => setMenuAbierto(false)}
+            aria-label="Cerrar menú"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className={styles.nav}>
@@ -235,15 +276,27 @@ export default function NuevaCompraPage() {
           </Link>
           <Link href="/usuarios" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconUsers className={styles.navIcon} />
-            <span>Trabajadores</span>
+            <span>Trabajadores / Usuarios</span>
           </Link>
           <Link href="/compras" className={`${styles.navItem} ${styles.navItemActive}`} onClick={() => setMenuAbierto(false)}>
             <IconInventory className={styles.navIcon} />
-            <span>Compras de Stock</span>
+            <span>Compras</span>
+          </Link>
+          <Link href="/reportes" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
+            <IconReports className={styles.navIcon} />
+            <span>Reportes</span>
           </Link>
         </nav>
+
+        <div className={styles.sidebarFooter}>
+          <button className={styles.logoutBtn} onClick={salir}>
+            <IconLogout />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
       </aside>
 
+      {/* Contenido Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
@@ -255,7 +308,7 @@ export default function NuevaCompraPage() {
               <span>/</span>
               <Link href="/compras" style={{ color: 'var(--text-muted)' }}>Compras</Link>
               <span>/</span>
-              <span className={styles.breadcrumbActive}>Nueva</span>
+              <span className={styles.breadcrumbActive}>Registrar Compra</span>
             </div>
           </div>
           <ThemeToggle />
@@ -265,159 +318,246 @@ export default function NuevaCompraPage() {
           {error && (
             <div className={styles.errorBanner} role="alert">
               <span>{error}</span>
+              <button className={styles.btnSecondary} onClick={() => setError(null)}>
+                Entendido
+              </button>
             </div>
           )}
 
           {cargando ? (
-            <div style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Cargando...
+            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+              Cargando formulario de compra…
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '20px', alignItems: 'start' }}>
-              
-              {/* FORMULARIO AGREGAR ITEMS */}
+            <div className={styles.formGrid}>
+              {/* Columna Izquierda: Formulario */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <section className={styles.bentoCard} style={{ padding: '20px' }}>
-                  <h2 className={styles.cardTitle} style={{ marginBottom: '15px' }}>Detalles de la Factura / Compra</h2>
+                
+                {/* Tarjeta 1: Datos Generales */}
+                <section className={styles.bentoCard}>
+                  <div className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>
+                      <IconInventory style={{ color: 'var(--primary)' }} />
+                      <span>1. Destino y Proveedor</span>
+                    </h2>
+                  </div>
                   
-                  <div className={styles.formRow}>
-                    <label className={styles.field}>
-                      <span className={styles.fieldLabel}>Sucursal de Destino *</span>
-                      <select className={styles.select} value={sucursalId} onChange={e => setSucursalId(e.target.value)}>
-                        {sucursales.map(s => (
-                          <option key={s.id} value={s.id}>{s.nombre} {s.es_matriz ? '(Matriz)' : ''}</option>
-                        ))}
-                      </select>
-                      <span className={styles.helperText}>El inventario se sumará a esta sucursal.</span>
-                    </label>
+                  <div className={styles.cardBody}>
+                    <div className={styles.formRow}>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Sucursal de Destino *</label>
+                        <select
+                          className={styles.select}
+                          value={sucursalId}
+                          onChange={(e) => setSucursalId(e.target.value)}
+                        >
+                          {sucursales.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <span className={styles.helperText}>El inventario ingresará a esta sucursal.</span>
+                      </div>
 
-                    <label className={styles.field}>
-                      <span className={styles.fieldLabel}>Proveedor Externo</span>
-                      <select className={styles.select} value={proveedorId} onChange={e => setProveedorId(e.target.value)}>
-                        <option value="">(Sin Especificar)</option>
-                        {proveedores.map(p => (
-                          <option key={p.id} value={p.id}>{p.nombre}</option>
-                        ))}
-                      </select>
-                    </label>
+                      <div className={styles.field}>
+                        <label className={styles.fieldLabel}>Proveedor Externo</label>
+                        <select
+                          className={styles.select}
+                          value={proveedorId}
+                          onChange={(e) => setProveedorId(e.target.value)}
+                        >
+                          <option value="">(Sin especificar / Directo)</option>
+                          {proveedores.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        <span className={styles.helperText}>Opcional para trazabilidad y facturas.</span>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
-                <section className={styles.bentoCard} style={{ padding: '20px' }}>
-                  <h2 className={styles.cardTitle} style={{ marginBottom: '15px' }}>Agregar Productos a la Compra</h2>
-                  <form onSubmit={agregarAlCarrito}>
-                    <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <input 
-                          type="radio" 
-                          name="tipo" 
-                          checked={tipoAgregando === 'bateria'} 
-                          onChange={() => setTipoAgregando('bateria')} 
-                        />
-                        Baterías (Catálogo)
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <input 
-                          type="radio" 
-                          name="tipo" 
-                          checked={tipoAgregando === 'casco'} 
-                          onChange={() => setTipoAgregando('casco')} 
-                        />
-                        Cascos Solos
-                      </label>
+                {/* Tarjeta 2: Agregar Artículos */}
+                <section className={styles.bentoCard}>
+                  <div className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>
+                      <IconAdd style={{ color: 'var(--primary)' }} />
+                      <span>2. Agregar Productos al Lote</span>
+                    </h2>
+                  </div>
+
+                  <div className={styles.cardBody}>
+                    {/* Control Segmentado Moderno */}
+                    <div className={styles.segmentedControl}>
+                      <button
+                        type="button"
+                        className={`${styles.segmentBtn} ${tipoAgregando === 'bateria' ? styles.segmentBtnActive : ''}`}
+                        onClick={() => setTipoAgregando('bateria')}
+                      >
+                        <IconCatalog style={{ width: '16px', height: '16px' }} />
+                        <span>Baterías (Catálogo)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.segmentBtn} ${tipoAgregando === 'casco' ? styles.segmentBtnActive : ''}`}
+                        onClick={() => setTipoAgregando('casco')}
+                      >
+                        <IconCasco style={{ width: '16px', height: '16px' }} />
+                        <span>Cascos Solos (Reciclados)</span>
+                      </button>
                     </div>
 
-                    {tipoAgregando === 'bateria' ? (
-                      <div className={styles.field}>
-                        <span className={styles.fieldLabel}>Batería (Buscar y Seleccionar)</span>
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                          <span style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }}>
-                            <IconSearch style={{ width: '16px', height: '16px' }} />
-                          </span>
+                    <form onSubmit={agregarAlCarrito}>
+                      {tipoAgregando === 'bateria' ? (
+                        <div className={styles.productSearchContainer}>
+                          <label className={styles.fieldLabel}>Buscar y Seleccionar Batería</label>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ position: 'absolute', left: '10px', color: 'var(--text-muted)' }}>
+                              <IconSearch style={{ width: '15px', height: '15px' }} />
+                            </span>
+                            <input
+                              type="text"
+                              className={styles.input}
+                              style={{ paddingLeft: '34px' }}
+                              placeholder="Filtrar por modelo, marca o código de barras…"
+                              value={filtroBaterias}
+                              onChange={(e) => setFiltroBaterias(e.target.value)}
+                            />
+                          </div>
+
+                          <div className={styles.productResultsList}>
+                            {productosFiltrados.length === 0 ? (
+                              <div style={{ padding: '14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+                                No se encontraron baterías que coincidan con la búsqueda.
+                              </div>
+                            ) : (
+                              productosFiltrados.slice(0, 10).map((p) => {
+                                const isSelected = productoSelec?.id === p.id;
+                                return (
+                                  <div
+                                    key={p.id}
+                                    className={`${styles.productItemOption} ${isSelected ? styles.productItemOptionSelected : ''}`}
+                                    onClick={() => seleccionarProducto(p)}
+                                  >
+                                    <div>
+                                      <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                                        {p.modelo} {p.marcas?.nombre ? <span style={{ fontWeight: 400, color: 'var(--text-secondary)' }}>• {p.marcas.nombre}</span> : ''}
+                                      </div>
+                                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                        Código: {p.codigo_barras || '—'}
+                                      </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                        Costo actual: {formatearDinero(p.precio_compra ?? 0)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          {productoSelec && (
+                            <div style={{ padding: '8px 12px', background: 'var(--surface-container-low)', borderRadius: 'var(--radius-sm)', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Seleccionado: <strong>{productoSelec.modelo}</strong></span>
+                              <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{productoSelec.marcas?.nombre ?? ''}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>Cascos / Baterías Viejas</label>
                           <input
-                            type="text"
                             className={styles.input}
-                            style={{ paddingLeft: '34px', width: '100%' }}
-                            placeholder="Filtrar por modelo, marca o código..."
-                            value={filtroBaterias}
-                            onChange={(e) => setFiltroBaterias(e.target.value)}
+                            value="Cascos Reciclados / Adquisición por Lote"
+                            disabled
+                            style={{ background: 'var(--surface-container-low)' }}
+                          />
+                          <span className={styles.helperText}>
+                            Se sumará directamente al contador de cascos disponibles en la sucursal seleccionada.
+                          </span>
+                        </div>
+                      )}
+
+                      <div className={styles.formRow} style={{ marginTop: '16px' }}>
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>Cantidad a Comprar</label>
+                          <input
+                            type="number"
+                            className={styles.input}
+                            value={cantSelec}
+                            onChange={(e) => setCantSelec(e.target.value)}
+                            min="1"
+                            required
                           />
                         </div>
-                        <select className={styles.select} value={productoSelec} onChange={e => setProductoSelec(e.target.value)}>
-                          <option value="" disabled>Seleccione una batería...</option>
-                          {productosFiltrados.map(p => (
-                            <option key={p.id} value={p.id}>{p.modelo} {p.marcas?.nombre ? `(${p.marcas.nombre})` : ''}</option>
-                          ))}
-                        </select>
-                        {productosFiltrados.length === 0 && (
-                          <div style={{ fontSize: '12px', color: 'var(--error)', marginTop: '4px' }}>No se encontraron baterías con esa búsqueda.</div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className={styles.field}>
-                        <span className={styles.fieldLabel}>Cascos Reciclados / Compra por Lote</span>
-                        <input className={styles.input} value="Cascos / Baterías Viejas" disabled style={{ background: 'var(--surface-container-low)' }} />
-                      </div>
-                    )}
 
-                    <div className={styles.formRow} style={{ marginTop: '15px' }}>
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>Cantidad</span>
-                        <input 
-                          type="number" 
-                          className={styles.input} 
-                          value={cantSelec} 
-                          onChange={e => setCantSelec(e.target.value)} 
-                          min="1"
-                        />
-                      </label>
-                      <label className={styles.field}>
-                        <span className={styles.fieldLabel}>Costo Unitario (Precio de Compra)</span>
-                        <input 
-                          type="number" 
-                          className={styles.input} 
-                          value={costoSelec} 
-                          onChange={e => setCostoSelec(e.target.value)} 
-                          min="0"
-                          step="0.01"
-                          placeholder="Ej. 1200.00"
-                        />
-                      </label>
-                    </div>
+                        <div className={styles.field}>
+                          <label className={styles.fieldLabel}>Costo Unitario ($ MXN)</label>
+                          <input
+                            type="number"
+                            className={styles.input}
+                            value={costoSelec}
+                            onChange={(e) => setCostoSelec(e.target.value)}
+                            min="0"
+                            step="0.01"
+                            placeholder="Ej. 1250.00"
+                            required
+                          />
+                        </div>
+                      </div>
 
-                    <button type="submit" className={styles.btnSecondary} style={{ marginTop: '15px' }}>
-                      <IconAdd style={{ width: '14px', height: '14px' }} /> Añadir a la lista
-                    </button>
-                  </form>
+                      <button
+                        type="submit"
+                        className={styles.btnSecondary}
+                        style={{ marginTop: '16px', width: '100%', justifyContent: 'center' }}
+                      >
+                        <IconAdd style={{ width: '15px', height: '15px' }} />
+                        <span>Añadir a la Lista</span>
+                      </button>
+                    </form>
+                  </div>
                 </section>
               </div>
 
-              {/* CARRITO Y TOTALES */}
-              <div className={styles.bentoCard} style={{ padding: '0', display: 'flex', flexDirection: 'column' }}>
-                <div className={styles.cardHeader} style={{ background: 'var(--surface-container-low)', padding: '15px 20px' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Resumen de Compra</h3>
+              {/* Columna Derecha: Resumen de Compra */}
+              <section className={styles.bentoCard}>
+                <div className={styles.cardHeader}>
+                  <h3 className={styles.cardTitle}>Resumen de la Compra</h3>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {totalArticulos} {totalArticulos === 1 ? 'artículo' : 'artículos'}
+                  </span>
                 </div>
-                
-                <div style={{ padding: '20px', flex: 1, minHeight: '300px' }}>
+
+                <div className={styles.cardBody} style={{ minHeight: '260px' }}>
                   {carrito.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', marginTop: '20px' }}>
-                      Agrega productos a la compra para continuar
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '40px 0' }}>
+                      Añade productos de la lista para calcular el total de la compra.
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {carrito.map(item => (
-                        <div key={item.id_carrito} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'var(--surface-container)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: '13px' }}>{item.descripcion}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                    <div className={styles.cartList}>
+                      {carrito.map((item) => (
+                        <div key={item.id_carrito} className={styles.cartItem}>
+                          <div className={styles.cartItemInfo}>
+                            <div className={styles.cartItemTitle}>{item.descripcion}</div>
+                            <div className={styles.cartItemSubtitle}>
                               {item.cantidad} x {formatearDinero(item.precio_unitario)}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-primary)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span className="mono" style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
                               {formatearDinero(item.cantidad * item.precio_unitario)}
-                            </div>
-                            <button className={styles.brandActionBtnDanger} onClick={() => eliminarDelCarrito(item.id_carrito)}>
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.btnDangerSm}
+                              onClick={() => eliminarDelCarrito(item.id_carrito)}
+                              title="Eliminar de la lista"
+                            >
                               <IconDelete style={{ width: '14px', height: '14px' }} />
                             </button>
                           </div>
@@ -427,23 +567,33 @@ export default function NuevaCompraPage() {
                   )}
                 </div>
 
-                <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', background: 'var(--surface-container-lowest)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <span style={{ fontSize: '16px', color: 'var(--text-secondary)' }}>Total</span>
-                    <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--primary)' }}>{formatearDinero(totalCompra)}</span>
+                <div className={styles.cartTotalBox}>
+                  <div className={styles.cartTotalRow}>
+                    <span className={styles.cartTotalLabel}>Total a Pagar:</span>
+                    <span className={`mono ${styles.cartTotalAmount}`}>
+                      {formatearDinero(totalCompra)}
+                    </span>
                   </div>
-                  
-                  <button 
-                    className={styles.btnPrimaryLg} 
-                    style={{ width: '100%', justifyContent: 'center' }}
+
+                  <button
+                    type="button"
+                    className={styles.btnPrimaryLg}
+                    style={{ width: '100%' }}
                     disabled={carrito.length === 0 || guardando}
                     onClick={() => void procesarCompra()}
                   >
-                    {guardando ? 'Registrando...' : 'Confirmar Compra'}
+                    {guardando ? 'Registrando Compra…' : 'Confirmar y Guardar Compra'}
                   </button>
-                </div>
-              </div>
 
+                  <Link
+                    href="/compras"
+                    className={styles.btnSecondary}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Cancelar y Volver
+                  </Link>
+                </div>
+              </section>
             </div>
           )}
         </main>
