@@ -50,38 +50,34 @@ function mensajeError(e: unknown): string {
 }
 
 function generarBotonesPaginacion(paginaActual: number, totalPaginas: number): (number | string)[] {
-  if (totalPaginas <= 7) {
+  if (totalPaginas <= 5) {
     return Array.from({ length: totalPaginas }, (_, i) => i + 1);
   }
 
-  const paginas = new Set<number>();
-  
-  // Primeras 2 pestañas
-  paginas.add(1);
-  paginas.add(2);
-
-  // Pestaña actual y sus adyacentes (anterior y siguiente)
-  if (paginaActual > 1) paginas.add(paginaActual - 1);
-  paginas.add(paginaActual);
-  if (paginaActual < totalPaginas) paginas.add(paginaActual + 1);
-
-  // Últimas 2 pestañas
-  paginas.add(totalPaginas - 1);
-  paginas.add(totalPaginas);
-
-  const listaOrdenada = Array.from(paginas)
-    .filter(p => p >= 1 && p <= totalPaginas)
-    .sort((a, b) => a - b);
-
-  const resultado: (number | string)[] = [];
-  for (let i = 0; i < listaOrdenada.length; i++) {
-    if (i > 0 && listaOrdenada[i] > listaOrdenada[i - 1] + 1) {
-      resultado.push(`dots-${i}`);
-    }
-    resultado.push(listaOrdenada[i]);
+  // Si estamos en la página 1 o 2
+  if (paginaActual <= 2) {
+    const inicio = [1, 2];
+    if (paginaActual === 2 && totalPaginas > 2) inicio.push(3);
+    const fin = [totalPaginas - 1, totalPaginas];
+    return [...inicio, 'dots-end', ...fin];
   }
 
-  return resultado;
+  // Si estamos cerca del final (últimas 2 páginas)
+  if (paginaActual >= totalPaginas - 1) {
+    return [totalPaginas - 2, totalPaginas - 1, totalPaginas];
+  }
+
+  // Si estamos en cualquier otra pestaña (ej. 5, 11, etc.),
+  // reemplazamos 1 y 2 por la pestaña actual y sus adyacentes:
+  const centro = [paginaActual - 1, paginaActual, paginaActual + 1];
+  
+  if (paginaActual + 1 < totalPaginas - 2) {
+    return [...centro, 'dots-end', totalPaginas - 1, totalPaginas];
+  } else if (paginaActual + 1 === totalPaginas - 2) {
+    return [...centro, totalPaginas - 1, totalPaginas];
+  } else {
+    return [paginaActual - 1, paginaActual, totalPaginas - 1, totalPaginas];
+  }
 }
 
 export default function InventarioPage() {
