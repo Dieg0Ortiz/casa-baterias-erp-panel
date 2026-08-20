@@ -49,6 +49,41 @@ function mensajeError(e: unknown): string {
     : 'Ocurrió un error. Intenta de nuevo.';
 }
 
+function generarBotonesPaginacion(paginaActual: number, totalPaginas: number): (number | string)[] {
+  if (totalPaginas <= 7) {
+    return Array.from({ length: totalPaginas }, (_, i) => i + 1);
+  }
+
+  const paginas = new Set<number>();
+  
+  // Primeras 2 pestañas
+  paginas.add(1);
+  paginas.add(2);
+
+  // Pestaña actual y sus adyacentes (anterior y siguiente)
+  if (paginaActual > 1) paginas.add(paginaActual - 1);
+  paginas.add(paginaActual);
+  if (paginaActual < totalPaginas) paginas.add(paginaActual + 1);
+
+  // Últimas 2 pestañas
+  paginas.add(totalPaginas - 1);
+  paginas.add(totalPaginas);
+
+  const listaOrdenada = Array.from(paginas)
+    .filter(p => p >= 1 && p <= totalPaginas)
+    .sort((a, b) => a - b);
+
+  const resultado: (number | string)[] = [];
+  for (let i = 0; i < listaOrdenada.length; i++) {
+    if (i > 0 && listaOrdenada[i] > listaOrdenada[i - 1] + 1) {
+      resultado.push(`dots-${i}`);
+    }
+    resultado.push(listaOrdenada[i]);
+  }
+
+  return resultado;
+}
+
 export default function InventarioPage() {
   const router = useRouter();
   const { autenticado, perfil } = useSesion();
@@ -504,44 +539,74 @@ function InventarioAdmin() {
               )}
             </div>
 
-            {/* Barra de Paginación */}
+            {/* Barra de Paginación Inteligente */}
             {itemsVisibles.length > 0 && (
               <div className={styles.paginationBar}>
                 <div className={styles.paginationInfo}>
                   Mostrando {indiceInicio + 1} - {Math.min(indiceInicio + ITEMS_POR_PAGINA, itemsVisibles.length)} de {itemsVisibles.length} productos
                 </div>
 
-                <div className={styles.paginationControls}>
-                  <button
-                    type="button"
-                    className={styles.pageBtn}
-                    onClick={() => setPagina(p => Math.max(1, p - 1))}
-                    disabled={pagina === 1}
-                    title="Página anterior"
-                  >
-                    <IconChevronLeft />
-                  </button>
-
-                  {Array.from({ length: totalPaginas }, (_, idx) => idx + 1).map(num => (
-                    <button
-                      key={num}
-                      type="button"
-                      className={`${styles.pageBtn} ${pagina === num ? styles.pageBtnActive : ''}`}
-                      onClick={() => setPagina(num)}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  {/* Selector rápido 'Ir a pestaña/página' */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pestaña:</span>
+                    <select
+                      className={styles.select}
+                      style={{ padding: '4px 8px', fontSize: '12px', minWidth: '85px', width: 'auto', height: '32px' }}
+                      value={pagina}
+                      onChange={(e) => setPagina(Number(e.target.value))}
                     >
-                      {num}
-                    </button>
-                  ))}
+                      {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((num) => (
+                        <option key={num} value={num}>
+                          Pág. {num}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  <button
-                    type="button"
-                    className={styles.pageBtn}
-                    onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
-                    disabled={pagina === totalPaginas}
-                    title="Página siguiente"
-                  >
-                    <IconChevronRight />
-                  </button>
+                  {/* Botones de navegación numerados */}
+                  <div className={styles.paginationControls}>
+                    <button
+                      type="button"
+                      className={styles.pageBtn}
+                      onClick={() => setPagina(p => Math.max(1, p - 1))}
+                      disabled={pagina === 1}
+                      title="Página anterior"
+                    >
+                      <IconChevronLeft />
+                    </button>
+
+                    {generarBotonesPaginacion(pagina, totalPaginas).map((item) => {
+                      if (typeof item === 'string') {
+                        return (
+                          <span key={item} className={styles.pageDots}>
+                            …
+                          </span>
+                        );
+                      }
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          className={`${styles.pageBtn} ${pagina === item ? styles.pageBtnActive : ''}`}
+                          onClick={() => setPagina(item)}
+                          title={`Ir a pestaña ${item}`}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      className={styles.pageBtn}
+                      onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                      disabled={pagina === totalPaginas}
+                      title="Página siguiente"
+                    >
+                      <IconChevronRight />
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
