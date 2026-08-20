@@ -66,6 +66,7 @@ export interface ReabastecerInput {
   producto_id: string;
   sucursal_id: string;
   cantidad: number;
+  nota?: string;
 }
 
 export function reabastecerInventario(input: ReabastecerInput) {

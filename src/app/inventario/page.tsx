@@ -30,6 +30,7 @@ import {
   IconCasco,
   IconUsers,
   IconMenu,
+  IconSearch,
 } from '@/components/Icons';
 import styles from './inventario.module.css';
 
@@ -97,6 +98,7 @@ function InventarioAdmin() {
   const [modalAjustar, setModalAjustar] = useState<AjustarState | null>(null);
   const [operando, setOperando] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [filtro, setFiltro] = useState('');
 
   useEffect(() => {
     let activo = true;
@@ -175,6 +177,16 @@ function InventarioAdmin() {
   const totalCascos = items.reduce((s, i) => s + i.cascos_disponibles, 0);
   const nombreSucursal =
     sucursales.find((s) => s.id === sucursalId)?.nombre ?? 'Todas las Sucursales';
+
+  const itemsVisibles = items.filter(i => {
+    if (!filtro.trim()) return true;
+    const f = filtro.toLowerCase();
+    return (
+      (i.modelo ?? '').toLowerCase().includes(f) ||
+      (i.codigo_barras ?? '').toLowerCase().includes(f) ||
+      (i.marca ?? '').toLowerCase().includes(f)
+    );
+  });
 
   return (
     <div className={styles.layout}>
@@ -377,11 +389,22 @@ function InventarioAdmin() {
                 <span>Existencias en {nombreSucursal}</span>
               </h2>
             </div>
+            
+            <div className={styles.toolbar}>
+              <span style={{ display: 'flex', color: 'var(--text-muted)' }}><IconSearch /></span>
+              <input
+                className={styles.searchInput}
+                placeholder="Buscar batería, marca o código..."
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+              />
+            </div>
+
             <div className={styles.tableScroll}>
               {cargando ? (
                 <div className={styles.loadingText}>Cargando existencias…</div>
-              ) : items.length === 0 ? (
-                <div className={styles.emptyText}>No hay existencias registradas para esta sucursal.</div>
+              ) : itemsVisibles.length === 0 ? (
+                <div className={styles.emptyText}>No hay existencias que coincidan con la búsqueda.</div>
               ) : (
                 <table className={styles.table}>
                   <thead>
@@ -397,7 +420,7 @@ function InventarioAdmin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map((item) => (
+                    {itemsVisibles.map((item) => (
                       <tr key={`${item.sucursal_id}-${item.producto_id}`}>
                         <td><strong>{item.modelo ?? '—'}</strong></td>
                         <td>{item.marca ?? '—'}</td>
@@ -625,7 +648,7 @@ function AjustarExistenciaModal({
       await eliminarExistencias({
         producto_id: ajuste.productoId,
         sucursal_id: ajuste.sucursalId,
-        cantidad: modo === 'restar' ? cantNum : undefined,
+        cantidad: modo === 'restar' ? cantNum : ajuste.cantidadActual,
       });
       await onGuardado();
     } catch (err) {
