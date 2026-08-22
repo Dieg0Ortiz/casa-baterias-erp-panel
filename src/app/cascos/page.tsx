@@ -523,7 +523,7 @@ export default function CascosPage() {
                             {m.cantidad}
                           </td>
                           <td style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }} className="mono">
-                            {formatearDinero(montoDevuelto)}
+                            {formatearDinero(m.montoTotal)}
                           </td>
                           <td style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '12px' }}>
                             {new Date(m.ultimaFecha).toLocaleDateString('es-MX', {
@@ -795,7 +795,7 @@ function ModalResolverCasco({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const baterias = useMemo(() => productos.filter((p) => p.tipo === 'bateria'), [productos]);
+  const baterias = useMemo(() => productos.filter((p) => p.requiere_casco), [productos]);
 
   function seleccionarBateriaCatalogo(prodId: string) {
     setCascoProductoId(prodId);
@@ -983,7 +983,7 @@ function ModalNuevoIntercambio({
   const [error, setError] = useState<string | null>(null);
 
   // Filtrar baterías
-  const baterias = useMemo(() => productos.filter((p) => p.tipo === 'bateria'), [productos]);
+  const baterias = useMemo(() => productos.filter((p) => p.requiere_casco), [productos]);
 
   // Stock de cascos disponibles en la sucursal seleccionada
   const stockCascosSaliente = useMemo(() => {

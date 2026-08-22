@@ -22,6 +22,7 @@ import {
   IconSearch,
   IconClose,
 } from '@/components/Icons';
+import { Sidebar } from '@/components/Sidebar';
 import styles from '../compras.module.css';
 
 interface ItemCarrito {

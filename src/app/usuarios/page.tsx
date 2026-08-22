@@ -386,14 +386,6 @@ export default function UsuariosPage() {
 }
 
 function ModalCrearUsuario({
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
   sucursales,
   onCerrar,
   onGuardado,
@@ -402,6 +394,13 @@ function ModalCrearUsuario({
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [email, setEmail] = useState('');
@@ -601,14 +600,6 @@ function ModalCrearUsuario({
 }
 
 function ModalEditarUsuario({
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
   usuario,
   sucursales,
   onCerrar,
@@ -619,6 +610,13 @@ function ModalEditarUsuario({
   onCerrar: () => void;
   onGuardado: () => Promise<void>;
 }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
   const [nombreCompleto, setNombreCompleto] = useState(usuario.nombre_completo);
   const [rol, setRol] = useState<'trabajador' | 'administrador'>(usuario.rol);
   const [sucursalId, setSucursalId] = useState(usuario.sucursal_id ?? '');
