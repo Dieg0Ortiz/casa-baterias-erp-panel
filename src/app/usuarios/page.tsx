@@ -15,7 +15,6 @@ import {
   type Sucursal,
   listarSucursales,
 } from '@/lib/catalogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -146,7 +145,7 @@ export default function UsuariosPage() {
               <span className={styles.breadcrumbActive}>Trabajadores y Usuarios</span>
             </div>
           </div>
-          <ThemeToggle />
+          
         </header>
 
         <main className={styles.mainContent}>

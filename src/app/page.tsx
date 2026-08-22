@@ -10,7 +10,6 @@ import {
   obtenerDashboard,
 } from '@/lib/admin';
 import { formatearDinero } from '@/lib/catalogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -142,7 +141,7 @@ function DashboardAdmin({
           </div>
 
           <div className={styles.headerRight}>
-            <ThemeToggle />
+            
 
             <div className={styles.userInfo}>
               <div className={styles.userText}>

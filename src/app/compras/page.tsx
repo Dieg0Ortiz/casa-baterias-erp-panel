@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useSesion, logout } from '@/lib/auth';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { Compra, CompraDetalle, listarCompras, obtenerCompra } from '@/lib/purchases';
 import { formatearDinero } from '@/lib/catalogo';
 import { ApiError } from '@/lib/api';
@@ -123,7 +122,7 @@ export default function ComprasPage() {
               <span className={styles.breadcrumbActive}>Compras</span>
             </div>
           </div>
-          <ThemeToggle />
+          
         </header>
 
         <main className={styles.mainContent}>

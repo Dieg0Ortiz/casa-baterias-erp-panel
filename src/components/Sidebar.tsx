@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSesion, logout } from '@/lib/auth';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -122,23 +123,29 @@ export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarPr
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {(perfil?.nombre_completo ?? 'A')[0].toUpperCase()}
-            </div>
-            <div className={styles.userDetails}>
-              <span className={styles.userName}>{perfil?.nombre_completo ?? 'Administrador'}</span>
-              <span className={styles.userRole}>Administrador</span>
-            </div>
+          <div className={styles.themeToggleWrapper}>
+            <ThemeToggle estilo="sidebar" />
           </div>
-          <button
-            type="button"
-            className={styles.btnLogout}
-            onClick={salir}
-            title="Cerrar sesión"
-          >
-            <IconLogout />
-          </button>
+
+          <div className={styles.userRow}>
+            <div className={styles.userInfo}>
+              <div className={styles.userAvatar}>
+                {(perfil?.nombre_completo ?? 'A')[0].toUpperCase()}
+              </div>
+              <div className={styles.userDetails}>
+                <span className={styles.userName}>{perfil?.nombre_completo ?? 'Administrador'}</span>
+                <span className={styles.userRole}>Administrador</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className={styles.btnLogout}
+              onClick={salir}
+              title="Cerrar sesión"
+            >
+              <IconLogout />
+            </button>
+          </div>
         </div>
       </aside>
     </>

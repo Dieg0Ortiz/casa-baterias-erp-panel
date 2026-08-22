@@ -17,7 +17,6 @@ import {
   registrarAbonoCredito,
 } from '@/lib/admin';
 import { formatearDinero } from '@/lib/catalogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -303,7 +302,7 @@ export default function CreditosPage() {
             </div>
           </div>
           <div className={styles.headerActions}>
-            <ThemeToggle />
+            
             <button className={styles.btnSecondary} onClick={() => cargarDatos()} disabled={cargando}>
               <IconRefresh />
               <span>Actualizar</span>

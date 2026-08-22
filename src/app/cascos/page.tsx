@@ -21,7 +21,6 @@ import {
   listarSucursales,
 } from '@/lib/catalogo';
 import { type ItemInventario, listarInventario } from '@/lib/inventario';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -259,7 +258,7 @@ export default function CascosPage() {
               <span className={styles.breadcrumbActive}>Control de Cascos</span>
             </div>
           </div>
-          <ThemeToggle />
+          
         </header>
 
         <main className={styles.mainContent}>

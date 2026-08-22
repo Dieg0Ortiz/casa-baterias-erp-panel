@@ -21,7 +21,6 @@ import {
   listarSucursales,
   stockTotal,
 } from '@/lib/catalogo';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
   IconDashboard,
@@ -200,7 +199,7 @@ function CatalogoAdmin() {
               <span className={styles.breadcrumbActive}>Catálogo</span>
             </div>
           </div>
-          <ThemeToggle />
+          
         </header>
 
         <main className={styles.mainContent}>

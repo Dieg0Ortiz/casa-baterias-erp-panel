@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useSesion, logout } from '@/lib/auth';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { CompraItemInput, Proveedor, listarProveedores, registrarCompra } from '@/lib/purchases';
 import { Producto, Sucursal, formatearDinero, listarProductos, listarSucursales } from '@/lib/catalogo';
 import { ApiError } from '@/lib/api';
@@ -247,7 +246,7 @@ export default function NuevaCompraPage() {
               <span className={styles.breadcrumbActive}>Registrar Compra</span>
             </div>
           </div>
-          <ThemeToggle />
+          
         </header>
 
         <main className={styles.mainContent}>
