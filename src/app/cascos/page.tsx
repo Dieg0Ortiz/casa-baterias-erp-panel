@@ -1091,6 +1091,14 @@ function ModalNuevoIntercambio({
       setError(`Stock insuficiente: solo hay ${stockCascosSaliente} cascos disponibles de este modelo en la sucursal.`);
       return;
     }
+    if (!clienteNombre.trim()) {
+      setError('El nombre del cliente es obligatorio');
+      return;
+    }
+    if (!clienteTelefono.trim()) {
+      setError('El teléfono del cliente es obligatorio');
+      return;
+    }
 
     setGuardando(true);
     setError(null);
@@ -1100,8 +1108,8 @@ function ModalNuevoIntercambio({
         sucursal_id: sucursalId,
         metodo_pago: metodoPago,
         monto_cobrado: totalCobrar,
-        cliente_nombre: clienteNombre.trim() || undefined,
-        cliente_telefono: clienteTelefono.trim() || undefined,
+        cliente_nombre: clienteNombre.trim(),
+        cliente_telefono: clienteTelefono.trim(),
         notas: notas.trim() || undefined,
         items: [
           {
@@ -1280,18 +1288,20 @@ function ModalNuevoIntercambio({
           {/* Datos del Cliente */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Nombre de Cliente (Opcional)</span>
+              <span className={styles.fieldLabel}>Nombre de Cliente *</span>
               <input
                 className={styles.input}
+                required
                 value={clienteNombre}
                 onChange={(e) => setClienteNombre(e.target.value)}
                 placeholder="Ej. Juan Pérez"
               />
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>Teléfono (Opcional)</span>
+              <span className={styles.fieldLabel}>Teléfono *</span>
               <input
                 className={styles.input}
+                required
                 value={clienteTelefono}
                 onChange={(e) => setClienteTelefono(e.target.value)}
                 placeholder="Ej. 667 123 4567"
