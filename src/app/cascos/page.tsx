@@ -584,14 +584,16 @@ export default function CascosPage() {
                   <IconSplit style={{ color: '#3b82f6' }} />
                   <span>Registro de Intercambios de Cascos ({intercambiosFiltrados.length})</span>
                 </h2>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <button
+                    type="button"
                     className={styles.btnPrimary}
                     onClick={() => setModalNuevoIntercambio(true)}
                   >
-                    + Registrar Intercambio
+                    <IconPlus />
+                    <span>Registrar Intercambio</span>
                   </button>
-                  <button className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
+                  <button type="button" className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
                     <IconRefresh />
                     <span>Actualizar</span>
                   </button>
@@ -696,8 +698,10 @@ export default function CascosPage() {
                                 type="button"
                                 className={styles.btnSecondarySm}
                                 onClick={() => setIntercambioDetalle(item)}
+                                title="Ver comprobante detallado"
                               >
-                                Ver
+                                <IconReceipt style={{ width: '13px', height: '13px' }} />
+                                <span>Ver</span>
                               </button>
                             </td>
                           </tr>
