@@ -172,11 +172,11 @@
 /* Layout Principal */
 .mainWrapper {
   flex: 1;
-  margin-left: 240px;
+  
   display: flex;
   flex-direction: column;
   min-width: 0;
-  width: calc(100% - 240px);
+  width: 100%;
 }
 
 @media (max-width: 900px) {
