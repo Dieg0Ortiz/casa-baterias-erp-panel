@@ -29,18 +29,7 @@ export function ThemeToggle({
 
   if (!montado) {
     if (estilo === 'sidebar') {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '34px',
-            background: 'var(--surface-container-low)',
-            borderRadius: 'var(--radius-sm)',
-            border: '1px solid var(--outline-variant)',
-            opacity: 0.5,
-          }}
-        />
-      );
+      return <div style={{ height: '28px' }} />;
     }
     return null;
   }
@@ -58,39 +47,33 @@ export function ThemeToggle({
           width: '100%',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '8px 12px',
-          background: 'var(--surface-container-low)',
-          border: '1px solid var(--outline-variant)',
+          gap: '10px',
+          padding: '6px 4px',
+          background: 'transparent',
+          border: 'none',
           borderRadius: 'var(--radius-sm)',
           color: 'var(--text-secondary)',
-          fontSize: '12px',
-          fontWeight: 600,
+          fontSize: '13px',
+          fontWeight: 500,
           cursor: 'pointer',
-          transition: 'all 0.2s ease',
+          transition: 'all 0.15s ease',
+          textAlign: 'left',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--text-primary)';
+          e.currentTarget.style.background = 'var(--surface-container)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--text-secondary)';
+          e.currentTarget.style.background = 'transparent';
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {esOscuro ? (
-            <IconSun style={{ width: '15px', height: '15px', color: '#fbbf24' }} />
-          ) : (
-            <IconMoon style={{ width: '15px', height: '15px', color: 'var(--primary)' }} />
-          )}
-          <span>{esOscuro ? 'Modo Claro' : 'Modo Oscuro'}</span>
-        </div>
-        <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            background: 'var(--surface-container-high)',
-            color: esOscuro ? 'var(--primary)' : 'var(--text-muted)',
-          }}
-        >
-          {esOscuro ? 'Oscuro' : 'Claro'}
-        </span>
+        {esOscuro ? (
+          <IconSun style={{ width: '16px', height: '16px', color: '#fbbf24', flexShrink: 0 }} />
+        ) : (
+          <IconMoon style={{ width: '16px', height: '16px', color: 'var(--text-secondary)', flexShrink: 0 }} />
+        )}
+        <span>{esOscuro ? 'Modo Claro' : 'Modo Oscuro'}</span>
       </button>
     );
   }
