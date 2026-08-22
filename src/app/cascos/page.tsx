@@ -754,6 +754,14 @@ export default function CascosPage() {
 // MODAL: Resolver Casco Pendiente
 // ----------------------------------------------------------------------
 function ModalResolverCasco({
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   casco,
   productos,
   onCerrar,
@@ -942,6 +950,14 @@ function ModalResolverCasco({
 // MODAL: Registrar Nuevo Intercambio de Casco
 // ----------------------------------------------------------------------
 function ModalNuevoIntercambio({
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   sucursales,
   productos,
   inventario,
@@ -1267,6 +1283,14 @@ function ModalNuevoIntercambio({
 // MODAL: Detalle de Intercambio
 // ----------------------------------------------------------------------
 function ModalDetalleIntercambio({
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   intercambio,
   onCerrar,
 }: {

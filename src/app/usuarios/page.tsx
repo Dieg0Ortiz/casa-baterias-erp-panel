@@ -386,6 +386,14 @@ export default function UsuariosPage() {
 }
 
 function ModalCrearUsuario({
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   sucursales,
   onCerrar,
   onGuardado,
@@ -593,6 +601,14 @@ function ModalCrearUsuario({
 }
 
 function ModalEditarUsuario({
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   usuario,
   sucursales,
   onCerrar,

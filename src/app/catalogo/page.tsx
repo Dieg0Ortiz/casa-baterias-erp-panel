@@ -501,6 +501,14 @@ function Modal({
   onCerrar: () => void;
   children: ReactNode;
 }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
     <div className={styles.overlay} onClick={onCerrar}>
       <div
@@ -1080,16 +1088,6 @@ function EditarProductoModal({
               placeholder="0.00"
             />
           </label>
-
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Código de Barras</span>
-            <input
-              className={styles.input}
-              value={producto.codigo_barras}
-              disabled
-              style={{ opacity: 0.7, background: 'var(--surface-container-low)' }}
-            />
-          </div>
         </div>
 
         <div className={styles.formRow}>

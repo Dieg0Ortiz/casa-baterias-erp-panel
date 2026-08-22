@@ -616,6 +616,14 @@ function Modal({
   onCerrar: () => void;
   children: ReactNode;
 }) {
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
     <div className={styles.overlay} onClick={onCerrar}>
       <div
