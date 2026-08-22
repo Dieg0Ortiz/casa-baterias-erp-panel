@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
 import {
@@ -22,23 +22,15 @@ import {
 } from '@/lib/catalogo';
 import { type ItemInventario, listarInventario } from '@/lib/inventario';
 import {
-  IconBolt,
-  IconDashboard,
-  IconCatalog,
-  IconInventory,
-  IconReports,
-  IconLogout,
   IconSearch,
   IconClose,
   IconMenu,
   IconCasco,
-  IconUsers,
   IconRefresh,
   IconSplit,
-  IconCash,
-  IconCard,
   IconReceipt,
-  IconBuilding,
+  IconInventory,
+  IconPlus,
 } from '@/components/Icons';
 import { Sidebar } from '@/components/Sidebar';
 import styles from './cascos.module.css';
@@ -124,12 +116,6 @@ export default function CascosPage() {
     );
   }
 
-  function salir() {
-    logout();
-    router.replace('/login');
-    router.refresh();
-  }
-
   const ahora = new Date().getTime();
 
   // Filtrado de depósitos
@@ -171,9 +157,6 @@ export default function CascosPage() {
     .filter((c) => c.estado === 'pendiente')
     .reduce((s, c) => s + c.comision_cobrada, 0);
   const totalResueltos = cascos.filter((c) => c.estado === 'resuelto').length;
-  const montoDevuelto = cascos
-    .filter((c) => c.estado === 'resuelto')
-    .reduce((s, c) => s + c.monto_devuelto, 0);
 
   const totalIntercambios = intercambios.length;
   const gananciaIntercambios = intercambios.reduce((s, i) => s + Number(i.monto_cobrado || 0), 0);
@@ -243,22 +226,21 @@ export default function CascosPage() {
       {/* Contenedor Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.headerTitleRow}>
+          <div className={styles.headerLeft}>
             <button
               type="button"
-              className={styles.menuToggle}
+              className={styles.menuBtn}
               onClick={() => setMenuAbierto(true)}
               aria-label="Abrir menú"
             >
               <IconMenu />
             </button>
-            <div className={styles.breadcrumbs}>
-              <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
+            <div className={styles.breadcrumb}>
+              <Link href="/" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Panel</Link>
               <span>/</span>
-              <span className={styles.breadcrumbActive}>Control de Cascos</span>
+              <span className={styles.breadcrumbActive}>Control de Cascos & Trueques</span>
             </div>
           </div>
-          
         </header>
 
         <main className={styles.mainContent}>
@@ -273,7 +255,7 @@ export default function CascosPage() {
 
           {/* Tarjetas KPI */}
           <section className={styles.statsGrid}>
-            <div className={`${styles.statCard} ${styles.statCardWarning}`}>
+            <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Depósitos Pendientes</span>
                 <IconCasco style={{ color: '#ca8a04', opacity: 0.8 }} />
@@ -284,10 +266,10 @@ export default function CascosPage() {
               <div className={styles.statHint}>Baterías por devolver por clientes</div>
             </div>
 
-            <div className={`${styles.statCard} ${styles.statCardPrimary}`}>
+            <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Depósitos en Garantía</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>MXN</span>
+                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary)' }}>MXN</span>
               </div>
               <div className={styles.statValue} style={{ color: 'var(--primary)' }}>
                 {formatearDinero(montoRetenido)}
@@ -295,9 +277,10 @@ export default function CascosPage() {
               <div className={styles.statHint}>Monto en resguardo de clientes</div>
             </div>
 
-            <div className={`${styles.statCard} ${styles.statCardSuccess}`}>
+            <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Cascos en Bodega</span>
+                <IconInventory style={{ color: '#16a34a', opacity: 0.8 }} />
               </div>
               <div className={styles.statValue} style={{ color: '#16a34a' }}>
                 {totalResueltos}
@@ -305,7 +288,7 @@ export default function CascosPage() {
               <div className={styles.statHint}>Baterías viejas recibidas</div>
             </div>
 
-            <div className={`${styles.statCard} ${styles.statCardInfo}`}>
+            <div className={styles.statCard}>
               <div className={styles.statHeader}>
                 <span className={styles.statLabel}>Intercambios Realizados</span>
                 <IconSplit style={{ color: '#3b82f6', opacity: 0.8 }} />
@@ -357,43 +340,14 @@ export default function CascosPage() {
                   <IconCasco style={{ color: 'var(--primary)' }} />
                   <span>Registros de Cascos y Depósitos ({cascosFiltrados.length})</span>
                 </h2>
-                <button
-                  className={styles.btnSecondary}
-                  onClick={cargar}
-                  disabled={cargando}
-                >
+                <button type="button" className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
                   <IconRefresh />
                   <span>Actualizar</span>
                 </button>
               </div>
 
+              {/* Toolbar */}
               <div className={styles.toolbar}>
-                <div className={styles.filterGroup}>
-                  <button
-                    type="button"
-                    className={`${styles.filterBtn} ${filtroEstado === 'todos' ? styles.filterBtnActive : ''}`}
-                    onClick={() => setFiltroEstado('todos')}
-                  >
-                    Todos ({cascos.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.filterBtn} ${filtroEstado === 'pendiente' ? styles.filterBtnActive : ''}`}
-                    onClick={() => setFiltroEstado('pendiente')}
-                    style={{ color: filtroEstado === 'pendiente' ? '#ca8a04' : undefined }}
-                  >
-                    Pendientes ({totalPendientes})
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.filterBtn} ${filtroEstado === 'resuelto' ? styles.filterBtnActive : ''}`}
-                    onClick={() => setFiltroEstado('resuelto')}
-                    style={{ color: filtroEstado === 'resuelto' ? '#16a34a' : undefined }}
-                  >
-                    Resueltos ({totalResueltos})
-                  </button>
-                </div>
-
                 <div className={styles.searchBox}>
                   <IconSearch className={styles.searchIcon} />
                   <input
@@ -403,15 +357,31 @@ export default function CascosPage() {
                     placeholder="Buscar folio, batería, cliente…"
                   />
                 </div>
+
+                <div className={styles.filters}>
+                  {(['todos', 'pendiente', 'resuelto', 'vencido'] as const).map((estado) => (
+                    <button
+                      key={estado}
+                      type="button"
+                      className={`${styles.filterBtn} ${filtroEstado === estado ? styles.filterBtnActive : ''}`}
+                      onClick={() => setFiltroEstado(estado)}
+                    >
+                      {estado === 'todos' && 'Todos'}
+                      {estado === 'pendiente' && 'Pendientes'}
+                      {estado === 'resuelto' && 'Devueltos'}
+                      {estado === 'vencido' && 'Vencidos'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className={styles.tableScroll}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '22%' }}>Folio y Fecha</th>
+                      <th style={{ width: '20%' }}>Folio y Fecha</th>
                       <th style={{ width: '28%' }}>Batería y Cliente</th>
-                      <th style={{ width: '14%' }}>Sucursal</th>
+                      <th style={{ width: '16%' }}>Sucursal</th>
                       <th style={{ width: '14%', textAlign: 'right' }}>Depósito</th>
                       <th style={{ width: '12%', textAlign: 'center' }}>Estado</th>
                       <th style={{ width: '10%', textAlign: 'center' }}>Acción</th>
@@ -449,54 +419,44 @@ export default function CascosPage() {
                               </div>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 600 }}>{c.producto ?? 'Batería no especificada'}</div>
-                              {c.nombre_cliente ? (
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                  {c.nombre_cliente} {c.telefono_cliente ? `• ${c.telefono_cliente}` : ''}
-                                </div>
-                              ) : (
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                  Cliente general
-                                </div>
-                              )}
-                              {c.casco_recibido && (
-                                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
-                                  Entregó: {c.casco_recibido}
-                                </div>
-                              )}
+                              <div style={{ fontWeight: 600 }}>{c.producto ?? 'Batería sin especificar'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                Cliente: <strong>{c.nombre_cliente ?? 'General'}</strong>
+                                {c.telefono_cliente ? ` • Tel: ${c.telefono_cliente}` : ''}
+                              </div>
                             </td>
-                            <td>
-                              <span style={{ fontSize: '12px', fontWeight: 600 }}>{c.sucursal ?? '—'}</span>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                            <td>{c.sucursal ?? '—'}</td>
+                            <td style={{ textAlign: 'right' }} className="mono">
+                              <div style={{ fontWeight: 700, color: esPendiente ? '#ca8a04' : '#16a34a' }}>
                                 {formatearDinero(c.comision_cobrada)}
-                              </span>
+                              </div>
                               {c.estado === 'resuelto' && (
-                                <div style={{ fontSize: '11px', color: '#16a34a' }}>
+                                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                                   Devuelto: {formatearDinero(c.monto_devuelto)}
                                 </div>
                               )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {c.estado === 'resuelto' ? (
-                                <span className={styles.badgeSuccess}>Resuelto</span>
-                              ) : esVencido ? (
-                                <span className={styles.badgeDanger}>Vencido</span>
-                              ) : (
-                                <span className={styles.badgeWarning}>
-                                  Pendiente ({dias}d)
+                              {esVencido ? (
+                                <span className={styles.badgeVencido}>Vencido</span>
+                              ) : c.estado === 'pendiente' ? (
+                                <span className={dias <= 3 ? styles.badgeUrgente : styles.badgePendiente}>
+                                  {dias >= 0 ? `${dias}d restantes` : 'Pendiente'}
                                 </span>
+                              ) : (
+                                <span className={styles.badgeResuelto}>Devuelto</span>
                               )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {esPendiente ? (
+                              {c.estado === 'pendiente' ? (
                                 <button
                                   type="button"
-                                  className={styles.btnSuccessSm}
+                                  className={styles.btnPriceAction}
                                   onClick={() => setCascoAResolver(c)}
+                                  title="Registrar devolución de casco"
                                 >
-                                  Devolver
+                                  <IconCasco style={{ width: '13px', height: '13px' }} />
+                                  <span>Devolver</span>
                                 </button>
                               ) : (
                                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
@@ -520,9 +480,9 @@ export default function CascosPage() {
               <div className={styles.cardHeader}>
                 <h2 className={styles.cardTitle}>
                   <IconInventory style={{ color: 'var(--primary)' }} />
-                  <span>Resumen de Cascos Físicos Recibidos en Bodega</span>
+                  <span>Resumen de Baterías Viejas Recibidas ({resumenPorModelo.length} Modelos)</span>
                 </h2>
-                <button className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
+                <button type="button" className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
                   <IconRefresh />
                   <span>Actualizar</span>
                 </button>
@@ -532,38 +492,45 @@ export default function CascosPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '40%' }}>Modelo de Casco Recibido</th>
-                      <th style={{ width: '20%', textAlign: 'center' }}>Cantidad Recibida</th>
-                      <th style={{ width: '20%', textAlign: 'right' }}>Monto Total Devuelto</th>
-                      <th style={{ width: '20%', textAlign: 'right' }}>Última Recepción</th>
+                      <th>Modelo de Casco Recibido</th>
+                      <th style={{ textAlign: 'center', width: '15%' }}>Origen</th>
+                      <th style={{ textAlign: 'center', width: '15%' }}>Cantidad en Bodega</th>
+                      <th style={{ textAlign: 'right', width: '20%' }}>Monto Total Devuelto</th>
+                      <th style={{ textAlign: 'right', width: '20%' }}>Última Recepción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {resumenPorModelo.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className={styles.emptyText}>
-                          Aún no se han recibido cascos físicos devueltos.
+                        <td colSpan={5} className={styles.emptyText}>
+                          No hay cascos recibidos registrados en el sistema todavía.
                         </td>
                       </tr>
                     ) : (
-                      resumenPorModelo.map((item) => (
-                        <tr key={item.modelo}>
+                      resumenPorModelo.map((m) => (
+                        <tr key={m.modelo}>
                           <td>
-                            <div style={{ fontWeight: 700 }}>{item.modelo}</div>
-                            <span style={{ fontSize: '11px', color: item.esCatalogo ? '#16a34a' : '#ca8a04' }}>
-                              {item.esCatalogo ? '● En Catálogo' : '○ No Catalogado'}
-                            </span>
+                            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                              {m.modelo}
+                            </div>
                           </td>
                           <td style={{ textAlign: 'center' }}>
-                            <span className={styles.badgeSuccess} style={{ fontSize: '13px' }}>
-                              {item.cantidad} cascos
+                            <span className={m.esCatalogo ? styles.badgeResuelto : styles.badgePendiente}>
+                              {m.esCatalogo ? 'Catálogo' : 'Personalizado'}
                             </span>
                           </td>
-                          <td style={{ textAlign: 'right' }} className="mono">
-                            {formatearDinero(item.montoTotal)}
+                          <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '15px' }} className="mono">
+                            {m.cantidad}
                           </td>
-                          <td style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {new Date(item.ultimaFecha).toLocaleDateString('es-MX')}
+                          <td style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }} className="mono">
+                            {formatearDinero(montoDevuelto)}
+                          </td>
+                          <td style={{ textAlign: 'right', color: 'var(--text-muted)', fontSize: '12px' }}>
+                            {new Date(m.ultimaFecha).toLocaleDateString('es-MX', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })}
                           </td>
                         </tr>
                       ))
@@ -575,7 +542,7 @@ export default function CascosPage() {
           )}
 
           {/* ==================================================================== */}
-          {/* VISTA 3: INTERCAMBIO DE CASCOS (TRUEQUE CON COBRO $150)              */}
+          {/* VISTA 3: INTERCAMBIO DE CASCOS (TRUEQUES)                            */}
           {/* ==================================================================== */}
           {pestañaPrincipal === 'intercambios' && (
             <section className={styles.bentoCard}>
@@ -602,7 +569,7 @@ export default function CascosPage() {
 
               {/* Toolbar */}
               <div className={styles.toolbar}>
-                <div className={styles.searchBox} style={{ maxWidth: '420px' }}>
+                <div className={styles.searchBox}>
                   <IconSearch className={styles.searchIcon} />
                   <input
                     className={styles.searchInput}
@@ -611,8 +578,8 @@ export default function CascosPage() {
                     placeholder="Buscar folio, modelo entregado/recibido, cliente..."
                   />
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                  Tarifa estándar: <strong>$150.00 MXN</strong> por intercambio
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Tarifa estándar: <strong style={{ color: 'var(--text-primary)' }}>$150.00 MXN</strong> por intercambio
                 </div>
               </div>
 
@@ -637,7 +604,7 @@ export default function CascosPage() {
                     ) : intercambiosFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan={6} className={styles.emptyText}>
-                          No hay intercambios registrados aún. Haz clic en "+ Registrar Intercambio" para registrar el primero.
+                          No hay intercambios registrados aún. Haz clic en "Registrar Intercambio" para registrar el primero.
                         </td>
                       </tr>
                     ) : (
@@ -696,7 +663,7 @@ export default function CascosPage() {
                             <td style={{ textAlign: 'center' }}>
                               <button
                                 type="button"
-                                className={styles.btnSecondarySm}
+                                className={styles.btnPriceAction}
                                 onClick={() => setIntercambioDetalle(item)}
                                 title="Ver comprobante detallado"
                               >
@@ -715,6 +682,10 @@ export default function CascosPage() {
           )}
         </main>
       </div>
+
+      {/* ==================================================================== */}
+      {/* MODALES UNIFICADOS                                                   */}
+      {/* ==================================================================== */}
 
       {/* Modal Devolver Casco Pendiente */}
       {cascoAResolver && (
@@ -755,9 +726,21 @@ export default function CascosPage() {
 }
 
 // ----------------------------------------------------------------------
-// MODAL: Resolver Casco Pendiente
+// MODAL BASE COMPONENT (Scroll locked, centered, standard design)
 // ----------------------------------------------------------------------
-function ModalResolverCasco({
+function Modal({
+  titulo,
+  icono,
+  onCerrar,
+  children,
+  maxWidth = '580px',
+}: {
+  titulo: string;
+  icono?: ReactNode;
+  onCerrar: () => void;
+  children: ReactNode;
+  maxWidth?: string;
+}) {
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -766,6 +749,34 @@ function ModalResolverCasco({
     };
   }, []);
 
+  return (
+    <div className={styles.overlay} onClick={onCerrar}>
+      <div
+        className={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth }}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className={styles.modalHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {icono}
+            <h3>{titulo}</h3>
+          </div>
+          <button className={styles.closeBtn} onClick={onCerrar} aria-label="Cerrar">
+            <IconClose />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// MODAL: Resolver Casco Pendiente
+// ----------------------------------------------------------------------
+function ModalResolverCasco({
   casco,
   productos,
   onCerrar,
@@ -835,118 +846,111 @@ function ModalResolverCasco({
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onCerrar}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2>Registrar Devolución de Casco</h2>
-          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
+    <Modal titulo="Registrar Devolución de Casco" icono={<IconCasco style={{ color: 'var(--primary)' }} />} onCerrar={onCerrar}>
+      <form onSubmit={handleSubmit} className={styles.form}>
+        <div className={styles.infoBox}>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Folio de Venta:</span>
+            <span className="mono" style={{ fontWeight: 700 }}>{casco.folio ?? '—'}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Batería Comprada:</span>
+            <span className={styles.infoValue}>{casco.producto ?? 'Batería'}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Depósito Retenido:</span>
+            <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+              {formatearDinero(casco.comision_cobrada)}
+            </span>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.modalForm}>
-          <div className={styles.infoBox}>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Folio de Venta:</span>
-              <span className="mono" style={{ fontWeight: 700 }}>{casco.folio ?? '—'}</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Batería Comprada:</span>
-              <span className={styles.infoValue}>{casco.producto ?? 'Batería'}</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Depósito Retenido:</span>
-              <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                {formatearDinero(casco.comision_cobrada)}
-              </span>
-            </div>
-          </div>
-
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>¿Qué modelo de casco está entregando el cliente?</span>
-            <div className={styles.radioGroup}>
-              <label className={`${styles.radioOption} ${tipoModelo === 'catalogo' ? styles.radioOptionSelected : ''}`}>
-                <input
-                  type="radio"
-                  name="tipoModelo"
-                  checked={tipoModelo === 'catalogo'}
-                  onChange={() => setTipoModelo('catalogo')}
-                />
-                <span>Lista de la Tienda</span>
-              </label>
-              <label className={`${styles.radioOption} ${tipoModelo === 'personalizado' ? styles.radioOptionSelected : ''}`}>
-                <input
-                  type="radio"
-                  name="tipoModelo"
-                  checked={tipoModelo === 'personalizado'}
-                  onChange={() => setTipoModelo('personalizado')}
-                />
-                <span>Otro Modelo</span>
-              </label>
-            </div>
-          </div>
-
-          {tipoModelo === 'catalogo' ? (
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Seleccionar Batería del Catálogo</span>
-              <select
-                className={styles.select}
-                value={cascoProductoId}
-                onChange={(e) => seleccionarBateriaCatalogo(e.target.value)}
-              >
-                <option value="">-- Mismo modelo / Equivalente al depósito ($ {casco.comision_cobrada}.00) --</option>
-                {baterias.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.marcas?.nombre} {b.modelo} (Valor: {b.comision_casco ? formatearDinero(b.comision_casco) : '$0.00'})
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Escribir Modelo / Marca del Casco Recibido *</span>
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>¿Qué modelo de casco está entregando el cliente?</span>
+          <div className={styles.radioGroup}>
+            <label className={`${styles.radioOption} ${tipoModelo === 'catalogo' ? styles.radioOptionSelected : ''}`}>
               <input
-                className={styles.input}
-                value={modeloPersonalizado}
-                onChange={(e) => setModeloPersonalizado(e.target.value)}
-                placeholder="Ej. LTH L-42, América 60Ah..."
-                required
+                type="radio"
+                name="tipoModelo"
+                checked={tipoModelo === 'catalogo'}
+                onChange={() => setTipoModelo('catalogo')}
               />
+              <span>Lista de la Tienda</span>
             </label>
-          )}
+            <label className={`${styles.radioOption} ${tipoModelo === 'personalizado' ? styles.radioOptionSelected : ''}`}>
+              <input
+                type="radio"
+                name="tipoModelo"
+                checked={tipoModelo === 'personalizado'}
+                onChange={() => setTipoModelo('personalizado')}
+              />
+              <span>Otro Modelo</span>
+            </label>
+          </div>
+        </div>
 
+        {tipoModelo === 'catalogo' ? (
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Monto a Devolver en Efectivo ($ MXN) *</span>
+            <span className={styles.fieldLabel}>Seleccionar Batería del Catálogo</span>
+            <select
+              className={styles.select}
+              value={cascoProductoId}
+              onChange={(e) => seleccionarBateriaCatalogo(e.target.value)}
+            >
+              <option value="">-- Mismo modelo / Equivalente al depósito ($ {casco.comision_cobrada}.00) --</option>
+              {baterias.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.marcas?.nombre} {b.modelo} (Valor: {b.comision_casco ? formatearDinero(b.comision_casco) : '$0.00'})
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Escribir Modelo / Marca del Casco Recibido *</span>
             <input
               className={styles.input}
-              inputMode="decimal"
-              value={montoDevolver}
-              onChange={(e) => setMontoDevolver(e.target.value)}
+              value={modeloPersonalizado}
+              onChange={(e) => setModeloPersonalizado(e.target.value)}
+              placeholder="Ej. LTH L-42, América 60Ah..."
               required
             />
           </label>
+        )}
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Observaciones / Notas (Opcional)</span>
-            <input
-              className={styles.input}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej. Casco en buen estado."
-            />
-          </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Monto a Devolver en Efectivo ($ MXN) *</span>
+          <input
+            className={styles.input}
+            inputMode="decimal"
+            value={montoDevolver}
+            onChange={(e) => setMontoDevolver(e.target.value)}
+            required
+          />
+        </label>
 
-          {error && <p className={styles.errorBanner}>{error}</p>}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Observaciones / Notas (Opcional)</span>
+          <input
+            className={styles.input}
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            placeholder="Ej. Casco en buen estado."
+          />
+        </label>
 
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-              Cancelar
-            </button>
-            <button type="submit" className={styles.btnSuccessSm} disabled={guardando}>
-              {guardando ? 'Guardando…' : 'Confirmar Recepción y Devolver Monto'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando}>
+            {guardando ? 'Guardando…' : 'Confirmar y Devolver Monto'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -954,14 +958,6 @@ function ModalResolverCasco({
 // MODAL: Registrar Nuevo Intercambio de Casco
 // ----------------------------------------------------------------------
 function ModalNuevoIntercambio({
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
   sucursales,
   productos,
   inventario,
@@ -1065,236 +1061,219 @@ function ModalNuevoIntercambio({
   }
 
   return (
-    <div className={styles.modalOverlay} onClick={onCerrar}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
-        <div className={styles.modalHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <IconSplit style={{ color: '#3b82f6' }} />
-            <h2>Registrar Intercambio de Cascos</h2>
+    <Modal titulo="Registrar Intercambio de Cascos" icono={<IconSplit style={{ color: '#3b82f6' }} />} onCerrar={onCerrar} maxWidth="620px">
+      <form onSubmit={handleSubmit} className={styles.form}>
+        {/* Sucursal */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Sucursal donde se realiza el trueque *</span>
+          <select
+            className={styles.select}
+            value={sucursalId}
+            onChange={(e) => setSucursalId(e.target.value)}
+            required
+          >
+            {sucursales.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Batería Saliente */}
+        <label className={styles.field}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className={styles.fieldLabel}>Casco que se entrega al cliente (Saliente de bodega) *</span>
+            {salienteId && (
+              <span style={{ fontSize: '11px', fontWeight: 600, color: stockCascosSaliente > 0 ? '#16a34a' : '#ef4444' }}>
+                Stock en bodega: {stockCascosSaliente}
+              </span>
+            )}
           </div>
-          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
+          <select
+            className={styles.select}
+            value={salienteId}
+            onChange={(e) => setSalienteId(e.target.value)}
+            required
+          >
+            <option value="">-- Seleccionar batería del inventario --</option>
+            {baterias.map((b) => {
+              const stock = inventario.find(
+                (inv) => inv.producto_id === b.id && inv.sucursal_id === sucursalId
+              )?.cascos_disponibles ?? 0;
+              return (
+                <option key={b.id} value={b.id} disabled={stock <= 0}>
+                  {b.marcas?.nombre} {b.modelo} (Disponibles: {stock})
+                </option>
+              );
+            })}
+          </select>
+        </label>
+
+        {/* Batería Entrante */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Casco que deja el cliente (Entrante a bodega) *</span>
+          <select
+            className={styles.select}
+            value={entranteId}
+            onChange={(e) => setEntranteId(e.target.value)}
+            required
+          >
+            <option value="">-- Seleccionar modelo recibido --</option>
+            {baterias.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.marcas?.nombre} {b.modelo}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Cantidad y Tarifa */}
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Cantidad de cascos *</span>
+            <input
+              type="number"
+              min="1"
+              className={styles.input}
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              required
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Cobro por intercambio ($ MXN) *</span>
+            <input
+              className={styles.input}
+              inputMode="decimal"
+              value={tarifaUnitaria}
+              onChange={(e) => setTarifaUnitaria(e.target.value)}
+              required
+            />
+          </label>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.modalForm}>
-          {/* Sucursal */}
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Sucursal donde se realiza el trueque *</span>
-            <select
-              className={styles.select}
-              value={sucursalId}
-              onChange={(e) => setSucursalId(e.target.value)}
-              required
-            >
-              {sucursales.map((s) => (
-                <option key={s.id} value={s.id}>{s.nombre}</option>
-              ))}
-            </select>
-          </label>
+        {/* Método de Pago */}
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>Método de Pago *</span>
+          <div className={styles.radioGroup} style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <label className={`${styles.radioOption} ${metodoPago === 'efectivo' ? styles.radioOptionSelected : ''}`}>
+              <input
+                type="radio"
+                name="metodoPago"
+                checked={metodoPago === 'efectivo'}
+                onChange={() => setMetodoPago('efectivo')}
+              />
+              <span>Efectivo</span>
+            </label>
+            <label className={`${styles.radioOption} ${metodoPago === 'tarjeta' ? styles.radioOptionSelected : ''}`}>
+              <input
+                type="radio"
+                name="metodoPago"
+                checked={metodoPago === 'tarjeta'}
+                onChange={() => setMetodoPago('tarjeta')}
+              />
+              <span>Tarjeta</span>
+            </label>
+            <label className={`${styles.radioOption} ${metodoPago === 'transferencia' ? styles.radioOptionSelected : ''}`}>
+              <input
+                type="radio"
+                name="metodoPago"
+                checked={metodoPago === 'transferencia'}
+                onChange={() => setMetodoPago('transferencia')}
+              />
+              <span>Transferencia</span>
+            </label>
+          </div>
+        </div>
 
-          {/* Casco Saliente */}
+        {/* Datos Cliente */}
+        <div className={styles.formRow}>
           <label className={styles.field}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className={styles.fieldLabel}>Casco que se entrega al cliente (Saliente de Bodega) *</span>
-              {salienteId && (
-                <span className={stockCascosSaliente >= numCantidad ? styles.stockBadgeAvailable : styles.stockBadgeLow}>
-                  Disponibles en sucursal: {stockCascosSaliente}
-                </span>
-              )}
-            </div>
-            <select
-              className={styles.select}
-              value={salienteId}
-              onChange={(e) => setSalienteId(e.target.value)}
+            <span className={styles.fieldLabel}>Nombre de Cliente *</span>
+            <input
+              className={styles.input}
+              value={clienteNombre}
+              onChange={(e) => setClienteNombre(e.target.value)}
+              placeholder="Ej. Juan Pérez"
               required
-            >
-              <option value="">-- Seleccionar batería del inventario --</option>
-              {baterias.map((b) => {
-                const itemInv = inventario.find(
-                  (inv) => inv.producto_id === b.id && inv.sucursal_id === sucursalId
-                );
-                const stock = itemInv?.cascos_disponibles ?? 0;
-                return (
-                  <option key={b.id} value={b.id}>
-                    {b.marcas?.nombre} {b.modelo} — ({stock} cascos en stock)
-                  </option>
-                );
-              })}
-            </select>
+            />
           </label>
-
-          {/* Casco Entrante */}
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Casco que deja el cliente (Entrante a Bodega) *</span>
-            <select
-              className={styles.select}
-              value={entranteId}
-              onChange={(e) => setEntranteId(e.target.value)}
+            <span className={styles.fieldLabel}>Teléfono *</span>
+            <input
+              className={styles.input}
+              value={clienteTelefono}
+              onChange={(e) => setClienteTelefono(e.target.value)}
+              placeholder="Ej. 667 123 4567"
               required
-            >
-              <option value="">-- Seleccionar modelo recibido --</option>
-              {baterias.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.marcas?.nombre} {b.modelo}
-                </option>
-              ))}
-            </select>
+            />
           </label>
+        </div>
 
-          {/* Vista previa del intercambio */}
-          {prodSaliente && prodEntrante && (
-            <div className={styles.modalExchangePreview}>
-              <div className={styles.modalExchangeGrid}>
-                <div className={styles.exchangeSideBox}>
-                  <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Entrega Bodega</div>
-                  <div className={styles.exchangeSideModel}>
-                    {prodSaliente.marcas?.nombre} {prodSaliente.modelo}
-                  </div>
+        {/* Notas */}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Notas / Observaciones (Opcional)</span>
+          <input
+            className={styles.input}
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+            placeholder="Ej. Cliente trajo casco en buen estado para trueque."
+          />
+        </label>
+
+        {/* Preview del Trueque */}
+        {prodSaliente && prodEntrante && (
+          <div className={styles.modalExchangePreview}>
+            <div className={styles.modalExchangeGrid}>
+              <div className={styles.exchangeSideBox}>
+                <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Se lleva (Saliente)</div>
+                <div className={styles.exchangeSideModel}>
+                  {prodSaliente.marcas?.nombre} {prodSaliente.modelo}
                 </div>
-                <div className={styles.exchangeArrow}>⇄</div>
-                <div className={styles.exchangeSideBox}>
-                  <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Recibe Bodega</div>
-                  <div className={styles.exchangeSideModel}>
-                    {prodEntrante.marcas?.nombre} {prodEntrante.modelo}
-                  </div>
+              </div>
+              <div className={styles.exchangeArrow}>⇄</div>
+              <div className={styles.exchangeSideBox}>
+                <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Deja (Entrante)</div>
+                <div className={styles.exchangeSideModel}>
+                  {prodEntrante.marcas?.nombre} {prodEntrante.modelo}
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Cantidad y Tarifa */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Cantidad de Cascos *</span>
-              <input
-                className={styles.input}
-                type="number"
-                min="1"
-                value={cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-                required
-              />
-            </label>
-
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Cobro por Intercambio ($ MXN) *</span>
-              <input
-                className={styles.input}
-                inputMode="decimal"
-                value={tarifaUnitaria}
-                onChange={(e) => setTarifaUnitaria(e.target.value)}
-                required
-              />
-            </label>
           </div>
+        )}
 
-          {/* Método de Pago */}
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>Método de Pago *</span>
-            <div className={styles.radioGroup}>
-              <label className={`${styles.radioOption} ${metodoPago === 'efectivo' ? styles.radioOptionSelected : ''}`}>
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  checked={metodoPago === 'efectivo'}
-                  onChange={() => setMetodoPago('efectivo')}
-                />
-                <span>Efectivo (Entra a Caja)</span>
-              </label>
-              <label className={`${styles.radioOption} ${metodoPago === 'tarjeta' ? styles.radioOptionSelected : ''}`}>
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  checked={metodoPago === 'tarjeta'}
-                  onChange={() => setMetodoPago('tarjeta')}
-                />
-                <span>Tarjeta</span>
-              </label>
-              <label className={`${styles.radioOption} ${metodoPago === 'transferencia' ? styles.radioOptionSelected : ''}`}>
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  checked={metodoPago === 'transferencia'}
-                  onChange={() => setMetodoPago('transferencia')}
-                />
-                <span>Transferencia</span>
-              </label>
-            </div>
-          </div>
+        {/* Total Box */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container-low)', borderRadius: '8px', border: '1px solid var(--outline-variant)' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600 }}>Total a Cobrar al Cliente:</span>
+          <span className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+            {formatearDinero(totalCobrar)}
+          </span>
+        </div>
 
-          {/* Datos del Cliente */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Nombre de Cliente *</span>
-              <input
-                className={styles.input}
-                required
-                value={clienteNombre}
-                onChange={(e) => setClienteNombre(e.target.value)}
-                placeholder="Ej. Juan Pérez"
-              />
-            </label>
-            <label className={styles.field}>
-              <span className={styles.fieldLabel}>Teléfono *</span>
-              <input
-                className={styles.input}
-                required
-                value={clienteTelefono}
-                onChange={(e) => setClienteTelefono(e.target.value)}
-                placeholder="Ej. 667 123 4567"
-              />
-            </label>
-          </div>
+        {error && <p className={styles.errorBanner}>{error}</p>}
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Notas / Observaciones (Opcional)</span>
-            <input
-              className={styles.input}
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej. Cliente trajo casco en buen estado para trueque."
-            />
-          </label>
-
-          {/* Total a Cobrar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-variant)', borderRadius: '8px' }}>
-            <span style={{ fontWeight: 600, fontSize: '14px' }}>Total a Cobrar al Cliente:</span>
-            <span className="mono" style={{ fontSize: '18px', fontWeight: 800, color: '#16a34a' }}>
-              {formatearDinero(totalCobrar)}
-            </span>
-          </div>
-
-          {error && <p className={styles.errorBanner}>{error}</p>}
-
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className={styles.btnPrimary}
-              disabled={guardando || stockCascosSaliente < numCantidad}
-            >
-              {guardando ? 'Registrando…' : 'Confirmar y Cobrar Intercambio'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className={styles.btnPrimarySm}
+            disabled={guardando || stockCascosSaliente < numCantidad}
+          >
+            {guardando ? 'Registrando…' : 'Confirmar y Cobrar Intercambio'}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
 // ----------------------------------------------------------------------
-// MODAL: Detalle de Intercambio
+// MODAL: Detalle de Intercambio (Comprobante)
 // ----------------------------------------------------------------------
 function ModalDetalleIntercambio({
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
   intercambio,
   onCerrar,
 }: {
@@ -1304,104 +1283,94 @@ function ModalDetalleIntercambio({
   const primerItem = intercambio.intercambio_casco_items?.[0];
 
   return (
-    <div className={styles.modalOverlay} onClick={onCerrar}>
-      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-        <div className={styles.modalHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <IconReceipt style={{ color: 'var(--primary)' }} />
-            <h2>Comprobante de Intercambio</h2>
+    <Modal titulo="Comprobante de Intercambio" icono={<IconReceipt style={{ color: 'var(--primary)' }} />} onCerrar={onCerrar} maxWidth="540px">
+      <div className={styles.form}>
+        <div className={styles.infoBox}>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Folio:</span>
+            <span className="mono" style={{ fontWeight: 800, fontSize: '15px' }}>{intercambio.folio}</span>
           </div>
-          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
-        </div>
-
-        <div className={styles.modalForm}>
-          <div className={styles.infoBox}>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Fecha y Hora:</span>
+            <span className={styles.infoValue}>
+              {new Date(intercambio.created_at).toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Sucursal:</span>
+            <span className={styles.infoValue}>{intercambio.sucursales?.nombre ?? '—'}</span>
+          </div>
+          <div className={styles.infoRow}>
+            <span className={styles.infoLabel}>Registrado por:</span>
+            <span className={styles.infoValue}>{intercambio.usuarios?.nombre_completo ?? 'Personal'}</span>
+          </div>
+          {intercambio.cliente_nombre && (
             <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Folio:</span>
-              <span className="mono" style={{ fontWeight: 800, fontSize: '16px' }}>{intercambio.folio}</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Fecha y Hora:</span>
+              <span className={styles.infoLabel}>Cliente:</span>
               <span className={styles.infoValue}>
-                {new Date(intercambio.created_at).toLocaleDateString('es-MX', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
+                {intercambio.cliente_nombre} {intercambio.cliente_telefono ? `(${intercambio.cliente_telefono})` : ''}
               </span>
             </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Sucursal:</span>
-              <span className={styles.infoValue}>{intercambio.sucursales?.nombre ?? '—'}</span>
-            </div>
-            <div className={styles.infoRow}>
-              <span className={styles.infoLabel}>Registrado por:</span>
-              <span className={styles.infoValue}>{intercambio.usuarios?.nombre_completo ?? 'Personal'}</span>
-            </div>
-            {intercambio.cliente_nombre && (
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Cliente:</span>
-                <span className={styles.infoValue}>
-                  {intercambio.cliente_nombre} {intercambio.cliente_telefono ? `(${intercambio.cliente_telefono})` : ''}
-                </span>
-              </div>
-            )}
-          </div>
+          )}
+        </div>
 
-          {/* Desglose del trueque */}
-          {primerItem && (
-            <div className={styles.modalExchangePreview}>
-              <div className={styles.modalExchangeGrid}>
-                <div className={styles.exchangeSideBox}>
-                  <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Se llevó (Saliente)</div>
-                  <div className={styles.exchangeSideModel}>
-                    {primerItem.casco_saliente?.marcas?.nombre ? `${primerItem.casco_saliente.marcas.nombre} ` : ''}
-                    {primerItem.casco_saliente?.modelo}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Cantidad: {primerItem.cantidad}
-                  </div>
+        {/* Desglose del trueque */}
+        {primerItem && (
+          <div className={styles.modalExchangePreview}>
+            <div className={styles.modalExchangeGrid}>
+              <div className={styles.exchangeSideBox}>
+                <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Se llevó (Saliente)</div>
+                <div className={styles.exchangeSideModel}>
+                  {primerItem.casco_saliente?.marcas?.nombre ? `${primerItem.casco_saliente.marcas.nombre} ` : ''}
+                  {primerItem.casco_saliente?.modelo}
                 </div>
-                <div className={styles.exchangeArrow}>⇄</div>
-                <div className={styles.exchangeSideBox}>
-                  <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Entregó (Entrante)</div>
-                  <div className={styles.exchangeSideModel}>
-                    {primerItem.casco_entrante?.marcas?.nombre ? `${primerItem.casco_entrante.marcas.nombre} ` : ''}
-                    {primerItem.casco_entrante?.modelo}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Cantidad: {primerItem.cantidad}
-                  </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Cantidad: {primerItem.cantidad}
+                </div>
+              </div>
+              <div className={styles.exchangeArrow}>⇄</div>
+              <div className={styles.exchangeSideBox}>
+                <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Entregó (Entrante)</div>
+                <div className={styles.exchangeSideModel}>
+                  {primerItem.casco_entrante?.marcas?.nombre ? `${primerItem.casco_entrante.marcas.nombre} ` : ''}
+                  {primerItem.casco_entrante?.modelo}
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  Cantidad: {primerItem.cantidad}
                 </div>
               </div>
             </div>
-          )}
-
-          {intercambio.notas && (
-            <div style={{ fontSize: '12px', background: 'var(--surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--outline-variant)' }}>
-              <strong>Notas:</strong> {intercambio.notas}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.25)' }}>
-            <div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Monto Cobrado ({intercambio.metodo_pago.toUpperCase()}):</div>
-              <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600 }}>100% Ganancia de servicio</div>
-            </div>
-            <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
-              {formatearDinero(intercambio.monto_cobrado)}
-            </div>
           </div>
+        )}
 
-          <div className={styles.modalFooter}>
-            <button type="button" className={styles.btnPrimary} onClick={onCerrar} style={{ width: '100%' }}>
-              Cerrar Detalle
-            </button>
+        {intercambio.notas && (
+          <div style={{ fontSize: '12px', background: 'var(--surface-container-low)', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--outline-variant)' }}>
+            <strong>Notas:</strong> {intercambio.notas}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(34, 197, 94, 0.08)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Monto Cobrado ({intercambio.metodo_pago.toUpperCase()}):</div>
+            <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600 }}>100% Ganancia de servicio</div>
+          </div>
+          <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+            {formatearDinero(intercambio.monto_cobrado)}
           </div>
         </div>
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar} style={{ width: '100%' }}>
+            Cerrar Comprobante
+          </button>
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }
