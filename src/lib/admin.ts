@@ -277,3 +277,153 @@ export function registrarIntercambioCasco(input: RegistrarIntercambioInput) {
   });
 }
 
+// ==========================================
+// Módulo de Créditos Empresariales
+// ==========================================
+
+export interface EmpresaCredito {
+  id: string;
+  nombre: string;
+  rfc: string | null;
+  contacto_nombre: string | null;
+  telefono: string | null;
+  email: string | null;
+  direccion: string | null;
+  limite_credito: number;
+  dias_credito: number;
+  activo: boolean;
+  saldo_deudor?: number;
+  total_baterias_debidas?: number;
+  tiene_vencidas?: boolean;
+  ventas_pendientes_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreditoVenta {
+  id: string;
+  monto_total: number;
+  saldo_pendiente: number;
+  fecha_vencimiento: string;
+  recibido_por: string | null;
+  vehiculo_placas: string | null;
+  folio_vale: string | null;
+  estado: 'pendiente' | 'parcial' | 'pagado' | 'vencido';
+  created_at: string;
+  es_vencida?: boolean;
+  empresa?: {
+    id: string;
+    nombre: string;
+    rfc: string | null;
+    telefono: string | null;
+    dias_credito: number;
+  };
+  sucursal?: {
+    id: string;
+    nombre: string;
+  };
+  venta?: {
+    id: string;
+    folio: string;
+    created_at: string;
+    total: number;
+    usuario?: { id: string; nombre: string; email?: string };
+    venta_items?: Array<{
+      id: string;
+      cantidad: number;
+      precio_unitario: number;
+      con_casco: boolean;
+      producto?: { id: string; modelo: string; marca: string; linea: string };
+    }>;
+  };
+}
+
+export interface CreditoAbono {
+  id: string;
+  monto: number;
+  metodo_pago: 'efectivo' | 'transferencia' | 'cheque' | 'tarjeta';
+  referencia: string | null;
+  notas: string | null;
+  created_at: string;
+  usuario?: { id: string; nombre: string };
+  sucursal?: { id: string; nombre: string };
+}
+
+export interface EstadoCuentaEmpresa {
+  empresa: EmpresaCredito;
+  saldo_deudor: number;
+  ventas: CreditoVenta[];
+  abonos: CreditoAbono[];
+}
+
+export interface CrearEmpresaCreditoInput {
+  nombre: string;
+  rfc?: string;
+  contacto_nombre?: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+  limite_credito?: number;
+  dias_credito?: number;
+  activo?: boolean;
+}
+
+export interface ActualizarEmpresaCreditoInput {
+  nombre?: string;
+  rfc?: string;
+  contacto_nombre?: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+  limite_credito?: number;
+  dias_credito?: number;
+  activo?: boolean;
+}
+
+export interface RegistrarAbonoCreditoInput {
+  empresa_id: string;
+  monto: number;
+  metodo_pago?: 'efectivo' | 'transferencia' | 'cheque' | 'tarjeta';
+  credito_venta_id?: string;
+  sucursal_id?: string;
+  referencia?: string;
+  notas?: string;
+}
+
+export function listarEmpresasCredito(soloActivas: boolean = false) {
+  return api<EmpresaCredito[]>(`/creditos/empresas${soloActivas ? '?activas=true' : ''}`);
+}
+
+export function crearEmpresaCredito(input: CrearEmpresaCreditoInput) {
+  return api<EmpresaCredito>('/creditos/empresas', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function actualizarEmpresaCredito(id: string, input: ActualizarEmpresaCreditoInput) {
+  return api<EmpresaCredito>(`/creditos/empresas/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function obtenerEstadoCuentaEmpresa(id: string) {
+  return api<EstadoCuentaEmpresa>(`/creditos/empresas/${id}/estado-cuenta`);
+}
+
+export function listarVentasCredito(estado?: string, sucursalId?: string) {
+  const params = new URLSearchParams();
+  if (estado) params.append('estado', estado);
+  if (sucursalId) params.append('sucursal_id', sucursalId);
+  const q = params.toString();
+  return api<CreditoVenta[]>(`/creditos/ventas${q ? `?${q}` : ''}`);
+}
+
+export function registrarAbonoCredito(input: RegistrarAbonoCreditoInput) {
+  return api<any>('/creditos/abonos', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+

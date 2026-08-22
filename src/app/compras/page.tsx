@@ -159,6 +159,10 @@ export default function ComprasPage() {
             <IconInventory className={styles.navIcon} />
             <span>Compras</span>
           </Link>
+            <Link href="/creditos" className={styles.navLink}>
+              <IconBuilding className={styles.navIcon} />
+              <span>Créditos</span>
+            </Link>
           <Link href="/reportes" className={styles.navItem} onClick={() => setMenuAbierto(false)}>
             <IconReports className={styles.navIcon} />
             <span>Reportes</span>

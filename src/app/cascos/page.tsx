@@ -39,6 +39,7 @@ import {
   IconCash,
   IconCard,
   IconReceipt,
+  IconBuilding,
 } from '@/components/Icons';
 import styles from './cascos.module.css';
 
@@ -287,6 +288,10 @@ export default function CascosPage() {
             <Link href="/compras" className={styles.navLink}>
               <IconReceipt className={styles.navIcon} />
               <span>Compras</span>
+            </Link>
+            <Link href="/creditos" className={styles.navLink}>
+              <IconBuilding className={styles.navIcon} />
+              <span>Créditos</span>
             </Link>
           </div>
 
