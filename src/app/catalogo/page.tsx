@@ -482,28 +482,30 @@ function CatalogoAdmin() {
               )}
             </div>
 
-            {totalPaginas > 1 && (
-              <div className={styles.pagination}>
+            {visibles.length > 0 && (
+              <div className={styles.paginationBar}>
                 <div className={styles.paginationInfo}>
                   Mostrando {indiceInicio + 1} - {Math.min(indiceInicio + ITEMS_POR_PAGINA, visibles.length)} de {visibles.length} productos
                 </div>
-                
-                <div className={styles.paginationControls}>
-                  <div className={styles.pageSelect}>
-                    <label>Pestaña:</label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Pestaña:</span>
                     <select
+                      className={styles.select}
+                      style={{ padding: '4px 8px', fontSize: '12px', minWidth: '85px', width: 'auto', height: '32px' }}
                       value={pagina}
                       onChange={(e) => setPagina(Number(e.target.value))}
                     >
-                      {Array.from({ length: totalPaginas }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          Pág. {i + 1}
+                      {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((num) => (
+                        <option key={num} value={num}>
+                          Pág. {num}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className={styles.pageButtons}>
+                  <div className={styles.paginationControls}>
                     <button
                       type="button"
                       className={styles.pageBtn}
@@ -515,15 +517,20 @@ function CatalogoAdmin() {
                     </button>
 
                     {generarBotonesPaginacion(pagina, totalPaginas).map((item, idx) => {
-                      if (item === 'dots-start' || item === 'dots-end') {
-                        return <span key={idx} className={styles.pageDots}>...</span>;
+                      if (typeof item === 'string') {
+                        return (
+                          <span key={idx} className={styles.pageDots}>
+                            …
+                          </span>
+                        );
                       }
                       return (
                         <button
                           key={idx}
                           type="button"
-                          className={`${styles.pageBtn} ${item === pagina ? styles.pageBtnActive : ''}`}
-                          onClick={() => setPagina(item as number)}
+                          className={`${styles.pageBtn} ${pagina === item ? styles.pageBtnActive : ''}`}
+                          onClick={() => setPagina(item)}
+                          title={`Ir a pestaña ${item}`}
                         >
                           {item}
                         </button>
