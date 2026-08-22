@@ -213,3 +213,67 @@ export function resolverCasco(id: string, input: ResolverCascoInput) {
     body: JSON.stringify(input),
   });
 }
+
+// ----- Intercambios de Cascos (Trueque con cobro por servicio) -----
+
+export interface IntercambioCascoItem {
+  id: string;
+  cantidad: number;
+  precio_unitario: number;
+  casco_saliente?: {
+    id: string;
+    modelo: string;
+    descripcion: string;
+    marcas?: { nombre: string };
+  };
+  casco_entrante?: {
+    id: string;
+    modelo: string;
+    descripcion: string;
+    marcas?: { nombre: string };
+  };
+}
+
+export interface IntercambioCasco {
+  id: string;
+  folio: string;
+  sucursal_id: string;
+  usuario_id: string;
+  monto_cobrado: number;
+  metodo_pago: 'efectivo' | 'tarjeta' | 'transferencia';
+  cliente_nombre: string | null;
+  cliente_telefono: string | null;
+  notas: string | null;
+  estado: 'completado' | 'cancelado';
+  created_at: string;
+  sucursales?: { id: string; nombre: string };
+  usuarios?: { id: string; nombre_completo: string };
+  intercambio_casco_items?: IntercambioCascoItem[];
+}
+
+export interface RegistrarIntercambioInput {
+  sucursal_id: string;
+  metodo_pago?: 'efectivo' | 'tarjeta' | 'transferencia';
+  monto_cobrado?: number;
+  cliente_nombre?: string;
+  cliente_telefono?: string;
+  notas?: string;
+  items: Array<{
+    casco_saliente_id: string;
+    casco_entrante_id: string;
+    cantidad: number;
+    precio_unitario: number;
+  }>;
+}
+
+export function listarIntercambiosCascos() {
+  return api<IntercambioCasco[]>('/cascos/intercambios');
+}
+
+export function registrarIntercambioCasco(input: RegistrarIntercambioInput) {
+  return api<any>('/cascos/intercambios', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+

@@ -7,14 +7,20 @@ import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
 import {
   type CascoPendiente,
+  type IntercambioCasco,
   listarCascosPendientes,
+  listarIntercambiosCascos,
+  registrarIntercambioCasco,
   resolverCasco,
 } from '@/lib/admin';
 import {
   type Producto,
+  type Sucursal,
   formatearDinero,
   listarProductos,
+  listarSucursales,
 } from '@/lib/catalogo';
+import { type ItemInventario, listarInventario } from '@/lib/inventario';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
@@ -29,6 +35,10 @@ import {
   IconCasco,
   IconUsers,
   IconRefresh,
+  IconSplit,
+  IconCash,
+  IconCard,
+  IconReceipt,
 } from '@/components/Icons';
 import styles from './cascos.module.css';
 
@@ -43,14 +53,23 @@ export default function CascosPage() {
   const { autenticado, perfil } = useSesion();
 
   const [cascos, setCascos] = useState<CascoPendiente[]>([]);
+  const [intercambios, setIntercambios] = useState<IntercambioCasco[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [inventario, setInventario] = useState<ItemInventario[]>([]);
+
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pestañaPrincipal, setPestañaPrincipal] = useState<'depositos' | 'modelos'>('depositos');
+
+  const [pestañaPrincipal, setPestañaPrincipal] = useState<'depositos' | 'modelos' | 'intercambios'>('depositos');
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'resuelto' | 'vencido'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [menuAbierto, setMenuAbierto] = useState(false);
+
+  // Modales
   const [cascoAResolver, setCascoAResolver] = useState<CascoPendiente | null>(null);
+  const [modalNuevoIntercambio, setModalNuevoIntercambio] = useState(false);
+  const [intercambioDetalle, setIntercambioDetalle] = useState<IntercambioCasco | null>(null);
 
   useEffect(() => {
     if (!autenticado) router.replace('/login');
@@ -60,12 +79,18 @@ export default function CascosPage() {
     setCargando(true);
     setError(null);
     try {
-      const [datosCascos, datosProductos] = await Promise.all([
-        listarCascosPendientes(),
+      const [datosCascos, datosIntercambios, datosProductos, datosSucursales, datosInventario] = await Promise.all([
+        listarCascosPendientes().catch(() => []),
+        listarIntercambiosCascos().catch(() => []),
         listarProductos().catch(() => []),
+        listarSucursales().catch(() => []),
+        listarInventario().catch(() => []),
       ]);
       setCascos(datosCascos);
+      setIntercambios(datosIntercambios);
       setProductos(datosProductos);
+      setSucursales(datosSucursales);
+      setInventario(datosInventario);
     } catch (e) {
       setError(mensajeError(e));
     } finally {
@@ -106,6 +131,7 @@ export default function CascosPage() {
 
   const ahora = new Date().getTime();
 
+  // Filtrado de depósitos
   const cascosFiltrados = cascos.filter((c) => {
     if (filtroEstado !== 'todos' && c.estado !== filtroEstado) return false;
     if (busqueda.trim()) {
@@ -121,6 +147,24 @@ export default function CascosPage() {
     return true;
   });
 
+  // Filtrado de intercambios
+  const intercambiosFiltrados = intercambios.filter((i) => {
+    if (busqueda.trim()) {
+      const q = busqueda.toLowerCase();
+      const matchFolio = (i.folio ?? '').toLowerCase().includes(q);
+      const matchCliente = (i.cliente_nombre ?? '').toLowerCase().includes(q);
+      const matchSucursal = (i.sucursales?.nombre ?? '').toLowerCase().includes(q);
+      const matchUsuario = (i.usuarios?.nombre_completo ?? '').toLowerCase().includes(q);
+      const matchItem = (i.intercambio_casco_items ?? []).some((it) =>
+        (it.casco_saliente?.modelo ?? '').toLowerCase().includes(q) ||
+        (it.casco_entrante?.modelo ?? '').toLowerCase().includes(q)
+      );
+      if (!matchFolio && !matchCliente && !matchSucursal && !matchUsuario && !matchItem) return false;
+    }
+    return true;
+  });
+
+  // Métricas
   const totalPendientes = cascos.filter((c) => c.estado === 'pendiente').length;
   const montoRetenido = cascos
     .filter((c) => c.estado === 'pendiente')
@@ -130,7 +174,10 @@ export default function CascosPage() {
     .filter((c) => c.estado === 'resuelto')
     .reduce((s, c) => s + c.monto_devuelto, 0);
 
-  // Agrupación de cascos recibidos por modelo
+  const totalIntercambios = intercambios.length;
+  const gananciaIntercambios = intercambios.reduce((s, i) => s + Number(i.monto_cobrado || 0), 0);
+
+  // Agrupación por modelo
   const resumenPorModelo = useMemo(() => {
     const resueltos = cascos.filter((c) => c.estado === 'resuelto');
     const mapa = new Map<string, {
@@ -199,7 +246,7 @@ export default function CascosPage() {
         />
       )}
 
-      {/* Sidebar Persistente */}
+      {/* Sidebar */}
       <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
         <div className={styles.brand}>
           <div className={styles.brandInfo}>
@@ -219,84 +266,77 @@ export default function CascosPage() {
         </div>
 
         <nav className={styles.nav}>
-          <Link
-            href="/"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconDashboard className={styles.navIcon} />
-            <span>Dashboard</span>
-          </Link>
-          <Link
-            href="/catalogo"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconCatalog className={styles.navIcon} />
-            <span>Catálogo</span>
-          </Link>
-          <Link
-            href="/inventario"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconInventory className={styles.navIcon} />
-            <span>Inventario</span>
-          </Link>
-          <Link
-            href="/cascos"
-            className={`${styles.navItem} ${styles.navItemActive}`}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconCasco className={styles.navIcon} />
-            <span>Cascos</span>
-          </Link>
-          <Link
-            href="/usuarios"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconUsers className={styles.navIcon} />
-            <span>Trabajadores / Usuarios</span>
-          </Link>
-          <Link
-            href="/compras"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconInventory className={styles.navIcon} />
-            <span>Compras</span>
-          </Link>
-          <Link
-            href="/reportes"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconReports className={styles.navIcon} />
-            <span>Reportes</span>
-          </Link>
+          <div className={styles.navSection}>
+            <div className={styles.navSectionLabel}>Operaciones</div>
+            <Link href="/" className={styles.navLink}>
+              <IconDashboard className={styles.navIcon} />
+              <span>Resumen</span>
+            </Link>
+            <Link href="/inventario" className={styles.navLink}>
+              <IconInventory className={styles.navIcon} />
+              <span>Inventario</span>
+            </Link>
+            <Link href="/catalogo" className={styles.navLink}>
+              <IconCatalog className={styles.navIcon} />
+              <span>Catálogo</span>
+            </Link>
+            <Link href="/cascos" className={`${styles.navLink} ${styles.navLinkActive}`}>
+              <IconCasco className={styles.navIcon} />
+              <span>Cascos & Trueques</span>
+            </Link>
+            <Link href="/compras" className={styles.navLink}>
+              <IconReceipt className={styles.navIcon} />
+              <span>Compras</span>
+            </Link>
+          </div>
+
+          <div className={styles.navSection}>
+            <div className={styles.navSectionLabel}>Administración</div>
+            <Link href="/reportes" className={styles.navLink}>
+              <IconReports className={styles.navIcon} />
+              <span>Reportes & Finanzas</span>
+            </Link>
+            <Link href="/usuarios" className={styles.navLink}>
+              <IconUsers className={styles.navIcon} />
+              <span>Personal</span>
+            </Link>
+          </div>
         </nav>
 
         <div className={styles.sidebarFooter}>
-          <button className={styles.logoutBtn} onClick={salir}>
+          <div className={styles.userInfo}>
+            <div className={styles.userAvatar}>
+              {(perfil?.nombre_completo ?? 'A')[0].toUpperCase()}
+            </div>
+            <div className={styles.userDetails}>
+              <span className={styles.userName}>{perfil?.nombre_completo}</span>
+              <span className={styles.userRole}>Administrador</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.btnLogout}
+            onClick={salir}
+            title="Cerrar sesión"
+          >
             <IconLogout />
-            <span>Cerrar Sesión</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Wrapper */}
+      {/* Contenedor Principal */}
       <div className={styles.mainWrapper}>
         <header className={styles.header}>
-          <div className={styles.headerLeft}>
+          <div className={styles.headerTitleRow}>
             <button
-              className={styles.menuBtn}
+              type="button"
+              className={styles.menuToggle}
               onClick={() => setMenuAbierto(true)}
-              aria-label="Abrir menú de navegación"
+              aria-label="Abrir menú"
             >
               <IconMenu />
             </button>
-            <div className={styles.breadcrumb}>
+            <div className={styles.breadcrumbs}>
               <Link href="/" style={{ color: 'var(--text-muted)' }}>Panel</Link>
               <span>/</span>
               <span className={styles.breadcrumbActive}>Control de Cascos</span>
@@ -319,7 +359,7 @@ export default function CascosPage() {
           <section className={styles.statsGrid}>
             <div className={`${styles.statCard} ${styles.statCardWarning}`}>
               <div className={styles.statHeader}>
-                <span className={styles.statLabel}>Cascos Pendientes</span>
+                <span className={styles.statLabel}>Depósitos Pendientes</span>
                 <IconCasco style={{ color: '#ca8a04', opacity: 0.8 }} />
               </div>
               <div className={styles.statValue} style={{ color: '#ca8a04' }}>
@@ -330,13 +370,13 @@ export default function CascosPage() {
 
             <div className={`${styles.statCard} ${styles.statCardPrimary}`}>
               <div className={styles.statHeader}>
-                <span className={styles.statLabel}>Monto Retenido</span>
+                <span className={styles.statLabel}>Depósitos en Garantía</span>
                 <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>MXN</span>
               </div>
               <div className={styles.statValue} style={{ color: 'var(--primary)' }}>
                 {formatearDinero(montoRetenido)}
               </div>
-              <div className={styles.statHint}>Depósitos en garantía en caja</div>
+              <div className={styles.statHint}>Monto en resguardo de clientes</div>
             </div>
 
             <div className={`${styles.statCard} ${styles.statCardSuccess}`}>
@@ -351,17 +391,19 @@ export default function CascosPage() {
 
             <div className={`${styles.statCard} ${styles.statCardInfo}`}>
               <div className={styles.statHeader}>
-                <span className={styles.statLabel}>Total Reembolsado</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#3b82f6' }}>MXN</span>
+                <span className={styles.statLabel}>Intercambios Realizados</span>
+                <IconSplit style={{ color: '#3b82f6', opacity: 0.8 }} />
               </div>
               <div className={styles.statValue} style={{ color: '#3b82f6' }}>
-                {formatearDinero(montoDevuelto)}
+                {totalIntercambios}
               </div>
-              <div className={styles.statHint}>Reembolsos entregados en caja</div>
+              <div className={styles.statHint}>
+                Ganancia Neta: <strong>{formatearDinero(gananciaIntercambios)}</strong>
+              </div>
             </div>
           </section>
 
-          {/* Pestañas de Sección */}
+          {/* Pestañas Principales */}
           <div className={styles.mainTabs}>
             <button
               type="button"
@@ -379,9 +421,19 @@ export default function CascosPage() {
               <IconInventory />
               <span>Cascos Recibidos por Modelo ({resumenPorModelo.length})</span>
             </button>
+            <button
+              type="button"
+              className={`${styles.mainTab} ${pestañaPrincipal === 'intercambios' ? styles.mainTabActive : ''}`}
+              onClick={() => setPestañaPrincipal('intercambios')}
+            >
+              <IconSplit />
+              <span>Intercambio de Cascos ({intercambios.length})</span>
+            </button>
           </div>
 
-          {/* VISTA 1: DEPÓSITOS Y DEVOLUCIONES */}
+          {/* ==================================================================== */}
+          {/* VISTA 1: DEPÓSITOS Y DEVOLUCIONES                                    */}
+          {/* ==================================================================== */}
           {pestañaPrincipal === 'depositos' && (
             <section className={styles.bentoCard}>
               <div className={styles.cardHeader}>
@@ -399,7 +451,6 @@ export default function CascosPage() {
                 </button>
               </div>
 
-              {/* Toolbar con filtros y buscador */}
               <div className={styles.toolbar}>
                 <div className={styles.filterGroup}>
                   <button
@@ -438,7 +489,6 @@ export default function CascosPage() {
                 </div>
               </div>
 
-              {/* Tabla */}
               <div className={styles.tableScroll}>
                 <table className={styles.table}>
                   <thead>
@@ -446,111 +496,94 @@ export default function CascosPage() {
                       <th style={{ width: '22%' }}>Folio y Fecha</th>
                       <th style={{ width: '28%' }}>Batería y Cliente</th>
                       <th style={{ width: '14%' }}>Sucursal</th>
-                      <th style={{ width: '14%', textAlign: 'right' }}>Depósito en Garantía</th>
-                      <th style={{ width: '12%', textAlign: 'center' }}>Vigencia y Estado</th>
+                      <th style={{ width: '14%', textAlign: 'right' }}>Depósito</th>
+                      <th style={{ width: '12%', textAlign: 'center' }}>Estado</th>
                       <th style={{ width: '10%', textAlign: 'center' }}>Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cargando ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                          Cargando registros de cascos…
-                        </td>
+                        <td colSpan={6} className={styles.emptyText}>Cargando información…</td>
                       </tr>
                     ) : cascosFiltrados.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                          No se encontraron registros de cascos con los filtros aplicados.
-                        </td>
+                        <td colSpan={6} className={styles.emptyText}>No se encontraron registros de cascos.</td>
                       </tr>
                     ) : (
-                      cascosFiltrados.map((casco) => {
-                        const dias = calcularDiasRestantes(casco.fecha_limite);
-                        const esPendiente = casco.estado === 'pendiente';
-                        const esUrgente = esPendiente && dias <= 3 && dias >= 0;
-                        const vencido = esPendiente && dias < 0;
+                      cascosFiltrados.map((c) => {
+                        const dias = calcularDiasRestantes(c.fecha_limite);
+                        const esPendiente = c.estado === 'pendiente';
+                        const esVencido = esPendiente && dias < 0;
 
                         return (
-                          <tr key={casco.id}>
+                          <tr key={c.id}>
                             <td>
-                              <div className="mono" style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '13px' }}>
-                                {casco.folio ?? '—'}
+                              <div style={{ fontWeight: 700, color: 'var(--text-primary)' }} className="mono">
+                                {c.folio ?? 'S/F'}
                               </div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                {new Date(casco.created_at).toLocaleDateString('es-MX', {
-                                  day: '2-digit',
-                                  month: 'short',
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {new Date(c.created_at).toLocaleDateString('es-MX', {
                                   year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit',
                                 })}
                               </div>
                             </td>
                             <td>
-                              <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                {casco.producto ?? 'Batería'}
-                              </div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                {casco.nombre_cliente
-                                  ? `${casco.nombre_cliente}${casco.telefono_cliente ? ` · ${casco.telefono_cliente}` : ''}`
-                                  : 'Sin cliente registrado'}
-                              </div>
-                              {casco.casco_recibido && (
+                              <div style={{ fontWeight: 600 }}>{c.producto ?? 'Batería no especificada'}</div>
+                              {c.nombre_cliente ? (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                  {c.nombre_cliente} {c.telefono_cliente ? `• ${c.telefono_cliente}` : ''}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                  Cliente general
+                                </div>
+                              )}
+                              {c.casco_recibido && (
                                 <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
-                                  Casco recibido: {casco.casco_recibido}
+                                  Entregó: {c.casco_recibido}
                                 </div>
                               )}
                             </td>
-                            <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                              {casco.sucursal ?? '—'}
+                            <td>
+                              <span style={{ fontSize: '12px', fontWeight: 600 }}>{c.sucursal ?? '—'}</span>
                             </td>
-                            <td className="mono" style={{ textAlign: 'right' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '13px' }}>
-                                {formatearDinero(casco.comision_cobrada)}
-                              </div>
-                              {casco.estado === 'resuelto' && casco.monto_devuelto > 0 && (
-                                <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
-                                  Devuelto: {formatearDinero(casco.monto_devuelto)}
+                            <td style={{ textAlign: 'right' }}>
+                              <span className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                                {formatearDinero(c.comision_cobrada)}
+                              </span>
+                              {c.estado === 'resuelto' && (
+                                <div style={{ fontSize: '11px', color: '#16a34a' }}>
+                                  Devuelto: {formatearDinero(c.monto_devuelto)}
                                 </div>
                               )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              <div>
-                                {casco.estado === 'resuelto' ? (
-                                  <span className={styles.badgeResuelto}>Resuelto</span>
-                                ) : vencido ? (
-                                  <span className={styles.badgeVencido}>Vencido</span>
-                                ) : esUrgente ? (
-                                  <span className={styles.badgeUrgente}>Por vencer</span>
-                                ) : (
-                                  <span className={styles.badgePendiente}>Pendiente</span>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '3px' }}>
-                                {new Date(casco.fecha_limite).toLocaleDateString('es-MX', {
-                                  day: '2-digit',
-                                  month: 'short',
-                                })}
-                                {esPendiente && (
-                                  <span style={{ color: esUrgente || vencido ? '#dc2626' : 'inherit', fontWeight: esUrgente || vencido ? 700 : 500 }}>
-                                    {' '}({vencido ? `Venció hace ${Math.abs(dias)}d` : dias === 0 ? 'Vence hoy' : `${dias}d rest.`})
-                                  </span>
-                                )}
-                              </div>
+                              {c.estado === 'resuelto' ? (
+                                <span className={styles.badgeSuccess}>Resuelto</span>
+                              ) : esVencido ? (
+                                <span className={styles.badgeDanger}>Vencido</span>
+                              ) : (
+                                <span className={styles.badgeWarning}>
+                                  Pendiente ({dias}d)
+                                </span>
+                              )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {casco.estado === 'pendiente' ? (
+                              {esPendiente ? (
                                 <button
-                                  className={styles.btnResolver}
-                                  onClick={() => setCascoAResolver(casco)}
+                                  type="button"
+                                  className={styles.btnSuccessSm}
+                                  onClick={() => setCascoAResolver(c)}
                                 >
-                                  Resolver
+                                  Devolver
                                 </button>
                               ) : (
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                  {casco.resuelto_por ? `Por ${casco.resuelto_por}` : 'Cerrado'}
-                                </span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>—</span>
                               )}
                             </td>
                           </tr>
@@ -563,162 +596,257 @@ export default function CascosPage() {
             </section>
           )}
 
-          {/* VISTA 2: CASCOS RECIBIDOS POR MODELO Y BITÁCORA */}
+          {/* ==================================================================== */}
+          {/* VISTA 2: CASCOS RECIBIDOS POR MODELO                                 */}
+          {/* ==================================================================== */}
           {pestañaPrincipal === 'modelos' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Tarjetas Bento por Modelo */}
-              <div>
-                <h3 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-                  Inventario de Cascos Físicos en Bodega por Modelo ({resumenPorModelo.length})
-                </h3>
-                {resumenPorModelo.length === 0 ? (
-                  <div className={styles.bentoCard} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    Aún no se han recibido devoluciones de cascos físicos.
-                  </div>
-                ) : (
-                  <div className={styles.modelCardsGrid}>
-                    {resumenPorModelo.map((item) => (
-                      <div key={item.modelo} className={styles.modelCard}>
-                        <div className={styles.modelCardHeader}>
-                          <div>
-                            <h4 className={styles.modelCardTitle}>{item.modelo}</h4>
-                            <p className={styles.modelCardSubtitle}>
-                              {item.esCatalogo ? 'Batería de catálogo' : 'Modelo libre / cliente'}
-                            </p>
-                          </div>
-                          <span className={styles.modelCountBadge}>
-                            {item.cantidad} {item.cantidad === 1 ? 'casco' : 'cascos'}
-                          </span>
-                        </div>
-                        <div className={styles.modelCardFooter}>
-                          <span>Reembolsos: <strong style={{ color: '#16a34a' }}>{formatearDinero(item.montoTotal)}</strong></span>
-                          <span>Último: {new Date(item.ultimaFecha).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            <section className={styles.bentoCard}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>
+                  <IconInventory style={{ color: 'var(--primary)' }} />
+                  <span>Resumen de Cascos Físicos Recibidos en Bodega</span>
+                </h2>
+                <button className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
+                  <IconRefresh />
+                  <span>Actualizar</span>
+                </button>
               </div>
 
-              {/* Bitácora Detallada de Recepciones */}
-              <section className={styles.bentoCard}>
-                <div className={styles.cardHeader}>
-                  <h3 className={styles.cardTitle}>
-                    <IconReports style={{ color: 'var(--primary)' }} />
-                    <span>Bitácora de Recepciones y Devoluciones de Casco ({cascos.filter(c => c.estado === 'resuelto').length})</span>
-                  </h3>
-                </div>
-                <div className={styles.tableScroll}>
-                  <table className={styles.table}>
-                    <thead>
+              <div className={styles.tableScroll}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '40%' }}>Modelo de Casco Recibido</th>
+                      <th style={{ width: '20%', textAlign: 'center' }}>Cantidad Recibida</th>
+                      <th style={{ width: '20%', textAlign: 'right' }}>Monto Total Devuelto</th>
+                      <th style={{ width: '20%', textAlign: 'right' }}>Última Recepción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resumenPorModelo.length === 0 ? (
                       <tr>
-                        <th style={{ width: '18%' }}>Fecha y Hora</th>
-                        <th style={{ width: '26%' }}>Modelo de Casco Recibido</th>
-                        <th style={{ width: '22%' }}>Venta / Folio Origen</th>
-                        <th style={{ width: '12%' }}>Sucursal</th>
-                        <th style={{ width: '12%', textAlign: 'right' }}>Monto Reembolsado</th>
-                        <th style={{ width: '10%' }}>Recibido Por</th>
+                        <td colSpan={4} className={styles.emptyText}>
+                          Aún no se han recibido cascos físicos devueltos.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {cascos.filter(c => c.estado === 'resuelto').length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                            No hay registros de cascos resueltos aún.
+                    ) : (
+                      resumenPorModelo.map((item) => (
+                        <tr key={item.modelo}>
+                          <td>
+                            <div style={{ fontWeight: 700 }}>{item.modelo}</div>
+                            <span style={{ fontSize: '11px', color: item.esCatalogo ? '#16a34a' : '#ca8a04' }}>
+                              {item.esCatalogo ? '● En Catálogo' : '○ No Catalogado'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={styles.badgeSuccess} style={{ fontSize: '13px' }}>
+                              {item.cantidad} cascos
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'right' }} className="mono">
+                            {formatearDinero(item.montoTotal)}
+                          </td>
+                          <td style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {new Date(item.ultimaFecha).toLocaleDateString('es-MX')}
                           </td>
                         </tr>
-                      ) : (
-                        cascos.filter(c => c.estado === 'resuelto').map((c) => {
-                          let modeloNombre = c.casco_recibido;
-                          if (!modeloNombre && c.notas && c.notas.includes('[Modelo:')) {
-                            const match = c.notas.match(/\[Modelo:\s*([^\]]+)\]/);
-                            if (match && match[1]) modeloNombre = match[1].trim();
-                          }
-                          if (!modeloNombre) modeloNombre = c.producto ?? 'Casco Recibido';
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
-                          return (
-                            <tr key={c.id}>
-                              <td>
-                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '12px' }}>
-                                  {new Date(c.resuelto_en ?? c.created_at).toLocaleDateString('es-MX', {
-                                    day: '2-digit',
-                                    month: 'short',
-                                    year: 'numeric',
-                                  })}
-                                </div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                  {new Date(c.resuelto_en ?? c.created_at).toLocaleTimeString('es-MX', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })}
-                                </div>
-                              </td>
-                              <td>
-                                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                                  {modeloNombre}
-                                </div>
-                                {c.notas && (
-                                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                    {c.notas}
-                                  </div>
-                                )}
-                              </td>
-                              <td>
-                                <div className="mono" style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                                  {c.folio ?? '—'}
-                                </div>
-                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                  {c.nombre_cliente ?? 'Cliente en mostrador'}
-                                </div>
-                              </td>
-                              <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                {c.sucursal ?? '—'}
-                              </td>
-                              <td className="mono" style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
-                                {formatearDinero(c.monto_devuelto)}
-                              </td>
-                              <td style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                {c.resuelto_por ?? 'Administrador'}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+          {/* ==================================================================== */}
+          {/* VISTA 3: INTERCAMBIO DE CASCOS (TRUEQUE CON COBRO $150)              */}
+          {/* ==================================================================== */}
+          {pestañaPrincipal === 'intercambios' && (
+            <section className={styles.bentoCard}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>
+                  <IconSplit style={{ color: '#3b82f6' }} />
+                  <span>Registro de Intercambios de Cascos ({intercambiosFiltrados.length})</span>
+                </h2>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className={styles.btnPrimary}
+                    onClick={() => setModalNuevoIntercambio(true)}
+                  >
+                    + Registrar Intercambio
+                  </button>
+                  <button className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
+                    <IconRefresh />
+                    <span>Actualizar</span>
+                  </button>
                 </div>
-              </section>
-            </div>
+              </div>
+
+              {/* Toolbar */}
+              <div className={styles.toolbar}>
+                <div className={styles.searchBox} style={{ maxWidth: '420px' }}>
+                  <IconSearch className={styles.searchIcon} />
+                  <input
+                    className={styles.searchInput}
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    placeholder="Buscar folio, modelo entregado/recibido, cliente..."
+                  />
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Tarifa estándar: <strong>$150.00 MXN</strong> por intercambio
+                </div>
+              </div>
+
+              {/* Tabla de Intercambios */}
+              <div className={styles.tableScroll}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '18%' }}>Folio y Fecha</th>
+                      <th style={{ width: '16%' }}>Sucursal y Atendió</th>
+                      <th style={{ width: '22%' }}>Casco Entregado (Saliente)</th>
+                      <th style={{ width: '22%' }}>Casco Recibido (Entrante)</th>
+                      <th style={{ width: '12%', textAlign: 'right' }}>Cobrado</th>
+                      <th style={{ width: '10%', textAlign: 'center' }}>Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cargando ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyText}>Cargando intercambios…</td>
+                      </tr>
+                    ) : intercambiosFiltrados.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyText}>
+                          No hay intercambios registrados aún. Haz clic en "+ Registrar Intercambio" para registrar el primero.
+                        </td>
+                      </tr>
+                    ) : (
+                      intercambiosFiltrados.map((item) => {
+                        const primerItem = item.intercambio_casco_items?.[0];
+                        const cant = primerItem?.cantidad ?? 1;
+
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <div style={{ fontWeight: 700 }} className="mono">
+                                {item.folio}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {new Date(item.created_at).toLocaleDateString('es-MX', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600 }}>{item.sucursales?.nombre ?? '—'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {item.usuarios?.nombre_completo ?? 'Personal'}
+                              </div>
+                            </td>
+                            <td>
+                              <div className={styles.exchangeBadgeOutgoing}>
+                                <span>↑ Saliente ({cant}):</span>
+                                <strong>
+                                  {primerItem?.casco_saliente?.marcas?.nombre ? `${primerItem.casco_saliente.marcas.nombre} ` : ''}
+                                  {primerItem?.casco_saliente?.modelo ?? 'Batería'}
+                                </strong>
+                              </div>
+                            </td>
+                            <td>
+                              <div className={styles.exchangeBadgeIncoming}>
+                                <span>↓ Entrante ({cant}):</span>
+                                <strong>
+                                  {primerItem?.casco_entrante?.marcas?.nombre ? `${primerItem.casco_entrante.marcas.nombre} ` : ''}
+                                  {primerItem?.casco_entrante?.modelo ?? 'Batería'}
+                                </strong>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'right' }}>
+                              <span className="mono" style={{ fontWeight: 700, color: '#16a34a', fontSize: '14px' }}>
+                                {formatearDinero(item.monto_cobrado)}
+                              </span>
+                              <div style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                {item.metodo_pago}
+                              </div>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className={styles.btnSecondarySm}
+                                onClick={() => setIntercambioDetalle(item)}
+                              >
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           )}
         </main>
       </div>
 
-      {/* Modal de Resolución */}
+      {/* Modal Devolver Casco Pendiente */}
       {cascoAResolver && (
         <ModalResolverCasco
           casco={cascoAResolver}
           productos={productos}
           onCerrar={() => setCascoAResolver(null)}
-          onGuardado={async () => {
+          onExito={() => {
             setCascoAResolver(null);
-            await cargar();
+            void cargar();
           }}
+        />
+      )}
+
+      {/* Modal Registrar Nuevo Intercambio de Casco */}
+      {modalNuevoIntercambio && (
+        <ModalNuevoIntercambio
+          sucursales={sucursales}
+          productos={productos}
+          inventario={inventario}
+          onCerrar={() => setModalNuevoIntercambio(false)}
+          onExito={() => {
+            setModalNuevoIntercambio(false);
+            void cargar();
+          }}
+        />
+      )}
+
+      {/* Modal Detalle Intercambio */}
+      {intercambioDetalle && (
+        <ModalDetalleIntercambio
+          intercambio={intercambioDetalle}
+          onCerrar={() => setIntercambioDetalle(null)}
         />
       )}
     </div>
   );
 }
 
+// ----------------------------------------------------------------------
+// MODAL: Resolver Casco Pendiente
+// ----------------------------------------------------------------------
 function ModalResolverCasco({
   casco,
   productos,
   onCerrar,
-  onGuardado,
+  onExito,
 }: {
   casco: CascoPendiente;
   productos: Producto[];
   onCerrar: () => void;
-  onGuardado: () => Promise<void>;
+  onExito: () => void;
 }) {
   const [tipoModelo, setTipoModelo] = useState<'catalogo' | 'personalizado'>('catalogo');
   const [cascoProductoId, setCascoProductoId] = useState('');
@@ -728,10 +856,7 @@ function ModalResolverCasco({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const baterias = useMemo(
-    () => productos.filter((p) => p.requiere_casco && p.activo),
-    [productos],
-  );
+  const baterias = useMemo(() => productos.filter((p) => p.tipo === 'bateria'), [productos]);
 
   function seleccionarBateriaCatalogo(prodId: string) {
     setCascoProductoId(prodId);
@@ -739,64 +864,57 @@ function ModalResolverCasco({
       setMontoDevolver(String(casco.comision_cobrada));
       return;
     }
-    const prod = baterias.find((b) => b.id === prodId);
-    if (prod && prod.comision_casco != null && prod.comision_casco > 0) {
-      // El precio del casco se basa en la comisión configurada de esa batería
-      const valorDevolucion = Math.min(Number(prod.comision_casco), casco.comision_cobrada);
-      setMontoDevolver(String(valorDevolucion));
+    const bat = baterias.find((b) => b.id === prodId);
+    if (bat && bat.comision_casco != null && bat.comision_casco > 0) {
+      setMontoDevolver(String(bat.comision_casco));
     } else {
       setMontoDevolver(String(casco.comision_cobrada));
     }
   }
 
-  async function handleResolver(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const monto = Number(montoDevolver);
-    if (Number.isNaN(monto) || monto < 0) {
-      setError('Ingresa un monto a devolver válido (mayor o igual a cero).');
-      return;
-    }
-    if (monto > casco.comision_cobrada) {
-      setError(`El monto a devolver no puede exceder la comisión retenida ($${casco.comision_cobrada}).`);
+    const monto = parseFloat(montoDevolver);
+    if (isNaN(monto) || monto < 0) {
+      setError('El monto a devolver debe ser un número mayor o igual a 0');
       return;
     }
 
     if (tipoModelo === 'personalizado' && !modeloPersonalizado.trim()) {
-      setError('Escribe el modelo o marca del casco que fue recibido.');
+      setError('Por favor escribe el modelo o marca del casco que estás recibiendo');
       return;
     }
 
     setGuardando(true);
     setError(null);
-
-    const notaFinal = tipoModelo === 'personalizado'
-      ? `[Modelo: ${modeloPersonalizado.trim()}] ${notas.trim()}`.trim()
-      : notas.trim();
-
     try {
+      let notaFinal = notas.trim();
+      if (tipoModelo === 'personalizado' && modeloPersonalizado.trim()) {
+        notaFinal = `[Modelo: ${modeloPersonalizado.trim()}] ${notaFinal}`.trim();
+      }
+
       await resolverCasco(casco.id, {
         monto_devuelto: monto,
         casco_producto_id: tipoModelo === 'catalogo' && cascoProductoId ? cascoProductoId : undefined,
         notas: notaFinal || undefined,
       });
-      await onGuardado();
+      onExito();
     } catch (err) {
       setError(mensajeError(err));
+    } finally {
       setGuardando(false);
     }
   }
 
   return (
-    <div className={styles.overlay}>
-      <div className={styles.modal}>
+    <div className={styles.modalOverlay} onClick={onCerrar}>
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>Registrar Devolución de Casco</h3>
-          <button className={styles.closeBtn} onClick={onCerrar}>
-            <IconClose />
-          </button>
+          <h2>Registrar Devolución de Casco</h2>
+          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
         </div>
 
-        <form className={styles.form} onSubmit={handleResolver}>
+        <form onSubmit={handleSubmit} className={styles.modalForm}>
           <div className={styles.infoBox}>
             <div className={styles.infoRow}>
               <span className={styles.infoLabel}>Folio de Venta:</span>
@@ -812,17 +930,10 @@ function ModalResolverCasco({
                 {formatearDinero(casco.comision_cobrada)}
               </span>
             </div>
-            {casco.nombre_cliente && (
-              <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Cliente:</span>
-                <span className={styles.infoValue}>{casco.nombre_cliente} ({casco.telefono_cliente ?? 'S/T'})</span>
-              </div>
-            )}
           </div>
 
-          {/* Selector de tipo de modelo */}
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>¿Qué modelo de casco está entregando el cliente? *</span>
+            <span className={styles.fieldLabel}>¿Qué modelo de casco está entregando el cliente?</span>
             <div className={styles.radioGroup}>
               <label className={`${styles.radioOption} ${tipoModelo === 'catalogo' ? styles.radioOptionSelected : ''}`}>
                 <input
@@ -840,7 +951,7 @@ function ModalResolverCasco({
                   checked={tipoModelo === 'personalizado'}
                   onChange={() => setTipoModelo('personalizado')}
                 />
-                <span>Otro Modelo (No está en la lista)</span>
+                <span>Otro Modelo</span>
               </label>
             </div>
           </div>
@@ -856,13 +967,10 @@ function ModalResolverCasco({
                 <option value="">-- Mismo modelo / Equivalente al depósito ($ {casco.comision_cobrada}.00) --</option>
                 {baterias.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {b.marcas?.nombre} {b.modelo} (Valor de Casco: {b.comision_casco ? formatearDinero(b.comision_casco) : '$0.00'})
+                    {b.marcas?.nombre} {b.modelo} (Valor: {b.comision_casco ? formatearDinero(b.comision_casco) : '$0.00'})
                   </option>
                 ))}
               </select>
-              <span className={styles.helperText}>
-                Al elegir una batería de la lista, el precio del casco se ajusta automáticamente según su valor de catálogo.
-              </span>
             </label>
           ) : (
             <label className={styles.field}>
@@ -871,12 +979,9 @@ function ModalResolverCasco({
                 className={styles.input}
                 value={modeloPersonalizado}
                 onChange={(e) => setModeloPersonalizado(e.target.value)}
-                placeholder="Ej. LTH L-42-400 vieja, América 60Ah, Duralast..."
+                placeholder="Ej. LTH L-42, América 60Ah..."
                 required
               />
-              <span className={styles.helperText}>
-                Especifica el modelo físico que recibiste para llevar el control en la sección de cascos por modelo.
-              </span>
             </label>
           )}
 
@@ -887,12 +992,8 @@ function ModalResolverCasco({
               inputMode="decimal"
               value={montoDevolver}
               onChange={(e) => setMontoDevolver(e.target.value)}
-              placeholder="0.00"
               required
             />
-            <span className={styles.helperText}>
-              Depósito original: {formatearDinero(casco.comision_cobrada)}.
-            </span>
           </label>
 
           <label className={styles.field}>
@@ -901,7 +1002,7 @@ function ModalResolverCasco({
               className={styles.input}
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
-              placeholder="Ej. Casco en buen estado físico, devuelto en tiempo y forma."
+              placeholder="Ej. Casco en buen estado."
             />
           </label>
 
@@ -911,15 +1012,441 @@ function ModalResolverCasco({
             <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              className={styles.btnSuccessSm}
-              disabled={guardando}
-            >
+            <button type="submit" className={styles.btnSuccessSm} disabled={guardando}>
               {guardando ? 'Guardando…' : 'Confirmar Recepción y Devolver Monto'}
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// MODAL: Registrar Nuevo Intercambio de Casco
+// ----------------------------------------------------------------------
+function ModalNuevoIntercambio({
+  sucursales,
+  productos,
+  inventario,
+  onCerrar,
+  onExito,
+}: {
+  sucursales: Sucursal[];
+  productos: Producto[];
+  inventario: ItemInventario[];
+  onCerrar: () => void;
+  onExito: () => void;
+}) {
+  const [sucursalId, setSucursalId] = useState(sucursales[0]?.id ?? '');
+  const [salienteId, setSalienteId] = useState('');
+  const [entranteId, setEntranteId] = useState('');
+  const [cantidad, setCantidad] = useState('1');
+  const [tarifaUnitaria, setTarifaUnitaria] = useState('150.00');
+  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'tarjeta' | 'transferencia'>('efectivo');
+  const [clienteNombre, setClienteNombre] = useState('');
+  const [clienteTelefono, setClienteTelefono] = useState('');
+  const [notas, setNotas] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filtrar baterías
+  const baterias = useMemo(() => productos.filter((p) => p.tipo === 'bateria'), [productos]);
+
+  // Stock de cascos disponibles en la sucursal seleccionada
+  const stockCascosSaliente = useMemo(() => {
+    if (!salienteId || !sucursalId) return 0;
+    const item = inventario.find(
+      (inv) => inv.producto_id === salienteId && inv.sucursal_id === sucursalId
+    );
+    return item?.cascos_disponibles ?? 0;
+  }, [salienteId, sucursalId, inventario]);
+
+  const prodSaliente = useMemo(() => baterias.find((b) => b.id === salienteId), [baterias, salienteId]);
+  const prodEntrante = useMemo(() => baterias.find((b) => b.id === entranteId), [baterias, entranteId]);
+
+  const numCantidad = parseInt(cantidad, 10) || 1;
+  const numTarifa = parseFloat(tarifaUnitaria) || 0;
+  const totalCobrar = numCantidad * numTarifa;
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!sucursalId) {
+      setError('Selecciona una sucursal');
+      return;
+    }
+    if (!salienteId) {
+      setError('Selecciona el casco que se lleva el cliente');
+      return;
+    }
+    if (!entranteId) {
+      setError('Selecciona el casco que deja el cliente');
+      return;
+    }
+    if (numCantidad <= 0) {
+      setError('La cantidad debe ser al menos 1');
+      return;
+    }
+    if (stockCascosSaliente < numCantidad) {
+      setError(`Stock insuficiente: solo hay ${stockCascosSaliente} cascos disponibles de este modelo en la sucursal.`);
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+
+    try {
+      await registrarIntercambioCasco({
+        sucursal_id: sucursalId,
+        metodo_pago: metodoPago,
+        monto_cobrado: totalCobrar,
+        cliente_nombre: clienteNombre.trim() || undefined,
+        cliente_telefono: clienteTelefono.trim() || undefined,
+        notas: notas.trim() || undefined,
+        items: [
+          {
+            casco_saliente_id: salienteId,
+            casco_entrante_id: entranteId,
+            cantidad: numCantidad,
+            precio_unitario: numTarifa,
+          },
+        ],
+      });
+      onExito();
+    } catch (err) {
+      setError(mensajeError(err));
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onCerrar}>
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '580px' }}>
+        <div className={styles.modalHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconSplit style={{ color: '#3b82f6' }} />
+            <h2>Registrar Intercambio de Cascos</h2>
+          </div>
+          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className={styles.modalForm}>
+          {/* Sucursal */}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal donde se realiza el trueque *</span>
+            <select
+              className={styles.select}
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+              required
+            >
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>{s.nombre}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* Casco Saliente */}
+          <label className={styles.field}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span className={styles.fieldLabel}>Casco que se entrega al cliente (Saliente de Bodega) *</span>
+              {salienteId && (
+                <span className={stockCascosSaliente >= numCantidad ? styles.stockBadgeAvailable : styles.stockBadgeLow}>
+                  Disponibles en sucursal: {stockCascosSaliente}
+                </span>
+              )}
+            </div>
+            <select
+              className={styles.select}
+              value={salienteId}
+              onChange={(e) => setSalienteId(e.target.value)}
+              required
+            >
+              <option value="">-- Seleccionar batería del inventario --</option>
+              {baterias.map((b) => {
+                const itemInv = inventario.find(
+                  (inv) => inv.producto_id === b.id && inv.sucursal_id === sucursalId
+                );
+                const stock = itemInv?.cascos_disponibles ?? 0;
+                return (
+                  <option key={b.id} value={b.id}>
+                    {b.marcas?.nombre} {b.modelo} — ({stock} cascos en stock)
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+
+          {/* Casco Entrante */}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Casco que deja el cliente (Entrante a Bodega) *</span>
+            <select
+              className={styles.select}
+              value={entranteId}
+              onChange={(e) => setEntranteId(e.target.value)}
+              required
+            >
+              <option value="">-- Seleccionar modelo recibido --</option>
+              {baterias.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.marcas?.nombre} {b.modelo}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* Vista previa del intercambio */}
+          {prodSaliente && prodEntrante && (
+            <div className={styles.modalExchangePreview}>
+              <div className={styles.modalExchangeGrid}>
+                <div className={styles.exchangeSideBox}>
+                  <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Entrega Bodega</div>
+                  <div className={styles.exchangeSideModel}>
+                    {prodSaliente.marcas?.nombre} {prodSaliente.modelo}
+                  </div>
+                </div>
+                <div className={styles.exchangeArrow}>⇄</div>
+                <div className={styles.exchangeSideBox}>
+                  <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Recibe Bodega</div>
+                  <div className={styles.exchangeSideModel}>
+                    {prodEntrante.marcas?.nombre} {prodEntrante.modelo}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Cantidad y Tarifa */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Cantidad de Cascos *</span>
+              <input
+                className={styles.input}
+                type="number"
+                min="1"
+                value={cantidad}
+                onChange={(e) => setCantidad(e.target.value)}
+                required
+              />
+            </label>
+
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Cobro por Intercambio ($ MXN) *</span>
+              <input
+                className={styles.input}
+                inputMode="decimal"
+                value={tarifaUnitaria}
+                onChange={(e) => setTarifaUnitaria(e.target.value)}
+                required
+              />
+            </label>
+          </div>
+
+          {/* Método de Pago */}
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Método de Pago *</span>
+            <div className={styles.radioGroup}>
+              <label className={`${styles.radioOption} ${metodoPago === 'efectivo' ? styles.radioOptionSelected : ''}`}>
+                <input
+                  type="radio"
+                  name="metodoPago"
+                  checked={metodoPago === 'efectivo'}
+                  onChange={() => setMetodoPago('efectivo')}
+                />
+                <span>Efectivo (Entra a Caja)</span>
+              </label>
+              <label className={`${styles.radioOption} ${metodoPago === 'tarjeta' ? styles.radioOptionSelected : ''}`}>
+                <input
+                  type="radio"
+                  name="metodoPago"
+                  checked={metodoPago === 'tarjeta'}
+                  onChange={() => setMetodoPago('tarjeta')}
+                />
+                <span>Tarjeta</span>
+              </label>
+              <label className={`${styles.radioOption} ${metodoPago === 'transferencia' ? styles.radioOptionSelected : ''}`}>
+                <input
+                  type="radio"
+                  name="metodoPago"
+                  checked={metodoPago === 'transferencia'}
+                  onChange={() => setMetodoPago('transferencia')}
+                />
+                <span>Transferencia</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Datos del Cliente */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Nombre de Cliente (Opcional)</span>
+              <input
+                className={styles.input}
+                value={clienteNombre}
+                onChange={(e) => setClienteNombre(e.target.value)}
+                placeholder="Ej. Juan Pérez"
+              />
+            </label>
+            <label className={styles.field}>
+              <span className={styles.fieldLabel}>Teléfono (Opcional)</span>
+              <input
+                className={styles.input}
+                value={clienteTelefono}
+                onChange={(e) => setClienteTelefono(e.target.value)}
+                placeholder="Ej. 667 123 4567"
+              />
+            </label>
+          </div>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Notas / Observaciones (Opcional)</span>
+            <input
+              className={styles.input}
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="Ej. Cliente trajo casco en buen estado para trueque."
+            />
+          </label>
+
+          {/* Total a Cobrar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--surface-variant)', borderRadius: '8px' }}>
+            <span style={{ fontWeight: 600, fontSize: '14px' }}>Total a Cobrar al Cliente:</span>
+            <span className="mono" style={{ fontSize: '18px', fontWeight: 800, color: '#16a34a' }}>
+              {formatearDinero(totalCobrar)}
+            </span>
+          </div>
+
+          {error && <p className={styles.errorBanner}>{error}</p>}
+
+          <div className={styles.modalFooter}>
+            <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className={styles.btnPrimary}
+              disabled={guardando || stockCascosSaliente < numCantidad}
+            >
+              {guardando ? 'Registrando…' : 'Confirmar y Cobrar Intercambio'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// MODAL: Detalle de Intercambio
+// ----------------------------------------------------------------------
+function ModalDetalleIntercambio({
+  intercambio,
+  onCerrar,
+}: {
+  intercambio: IntercambioCasco;
+  onCerrar: () => void;
+}) {
+  const primerItem = intercambio.intercambio_casco_items?.[0];
+
+  return (
+    <div className={styles.modalOverlay} onClick={onCerrar}>
+      <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+        <div className={styles.modalHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconReceipt style={{ color: 'var(--primary)' }} />
+            <h2>Comprobante de Intercambio</h2>
+          </div>
+          <button className={styles.modalCloseBtn} onClick={onCerrar}><IconClose /></button>
+        </div>
+
+        <div className={styles.modalForm}>
+          <div className={styles.infoBox}>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Folio:</span>
+              <span className="mono" style={{ fontWeight: 800, fontSize: '16px' }}>{intercambio.folio}</span>
+            </div>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Fecha y Hora:</span>
+              <span className={styles.infoValue}>
+                {new Date(intercambio.created_at).toLocaleDateString('es-MX', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Sucursal:</span>
+              <span className={styles.infoValue}>{intercambio.sucursales?.nombre ?? '—'}</span>
+            </div>
+            <div className={styles.infoRow}>
+              <span className={styles.infoLabel}>Registrado por:</span>
+              <span className={styles.infoValue}>{intercambio.usuarios?.nombre_completo ?? 'Personal'}</span>
+            </div>
+            {intercambio.cliente_nombre && (
+              <div className={styles.infoRow}>
+                <span className={styles.infoLabel}>Cliente:</span>
+                <span className={styles.infoValue}>
+                  {intercambio.cliente_nombre} {intercambio.cliente_telefono ? `(${intercambio.cliente_telefono})` : ''}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Desglose del trueque */}
+          {primerItem && (
+            <div className={styles.modalExchangePreview}>
+              <div className={styles.modalExchangeGrid}>
+                <div className={styles.exchangeSideBox}>
+                  <div className={styles.exchangeSideTitle} style={{ color: '#ef4444' }}>Se llevó (Saliente)</div>
+                  <div className={styles.exchangeSideModel}>
+                    {primerItem.casco_saliente?.marcas?.nombre ? `${primerItem.casco_saliente.marcas.nombre} ` : ''}
+                    {primerItem.casco_saliente?.modelo}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Cantidad: {primerItem.cantidad}
+                  </div>
+                </div>
+                <div className={styles.exchangeArrow}>⇄</div>
+                <div className={styles.exchangeSideBox}>
+                  <div className={styles.exchangeSideTitle} style={{ color: '#16a34a' }}>Entregó (Entrante)</div>
+                  <div className={styles.exchangeSideModel}>
+                    {primerItem.casco_entrante?.marcas?.nombre ? `${primerItem.casco_entrante.marcas.nombre} ` : ''}
+                    {primerItem.casco_entrante?.modelo}
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                    Cantidad: {primerItem.cantidad}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {intercambio.notas && (
+            <div style={{ fontSize: '12px', background: 'var(--surface)', padding: '10px', borderRadius: '6px', border: '1px solid var(--outline-variant)' }}>
+              <strong>Notas:</strong> {intercambio.notas}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.25)' }}>
+            <div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Monto Cobrado ({intercambio.metodo_pago.toUpperCase()}):</div>
+              <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: 600 }}>100% Ganancia de servicio</div>
+            </div>
+            <div className="mono" style={{ fontSize: '20px', fontWeight: 800, color: '#16a34a' }}>
+              {formatearDinero(intercambio.monto_cobrado)}
+            </div>
+          </div>
+
+          <div className={styles.modalFooter}>
+            <button type="button" className={styles.btnPrimary} onClick={onCerrar} style={{ width: '100%' }}>
+              Cerrar Detalle
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
