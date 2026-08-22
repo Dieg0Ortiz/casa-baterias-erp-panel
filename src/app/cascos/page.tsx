@@ -41,6 +41,7 @@ import {
   IconReceipt,
   IconBuilding,
 } from '@/components/Icons';
+import { Sidebar } from '@/components/Sidebar';
 import styles from './cascos.module.css';
 
 function mensajeError(e: unknown): string {
@@ -238,96 +239,7 @@ export default function CascosPage() {
 
   return (
     <div className={styles.layout}>
-      {/* Backdrop móvil */}
-      {menuAbierto && (
-        <div
-          className={styles.sidebarBackdrop}
-          onClick={() => setMenuAbierto(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
-        <div className={styles.brand}>
-          <div className={styles.brandInfo}>
-            <span className={styles.brandIcon}><IconBolt /></span>
-            <div>
-              <h1 className={styles.brandTitle}>Casa Baterías</h1>
-              <p className={styles.brandSubtitle}>Control Central</p>
-            </div>
-          </div>
-          <button
-            className={styles.sidebarCloseBtn}
-            onClick={() => setMenuAbierto(false)}
-            aria-label="Cerrar menú"
-          >
-            <IconClose />
-          </button>
-        </div>
-
-        <nav className={styles.nav}>
-          <div className={styles.navSection}>
-            <div className={styles.navSectionLabel}>Operaciones</div>
-            <Link href="/" className={styles.navLink}>
-              <IconDashboard className={styles.navIcon} />
-              <span>Resumen</span>
-            </Link>
-            <Link href="/inventario" className={styles.navLink}>
-              <IconInventory className={styles.navIcon} />
-              <span>Inventario</span>
-            </Link>
-            <Link href="/catalogo" className={styles.navLink}>
-              <IconCatalog className={styles.navIcon} />
-              <span>Catálogo</span>
-            </Link>
-            <Link href="/cascos" className={`${styles.navLink} ${styles.navLinkActive}`}>
-              <IconCasco className={styles.navIcon} />
-              <span>Cascos & Trueques</span>
-            </Link>
-            <Link href="/compras" className={styles.navLink}>
-              <IconReceipt className={styles.navIcon} />
-              <span>Compras</span>
-            </Link>
-            <Link href="/creditos" className={styles.navLink}>
-              <IconBuilding className={styles.navIcon} />
-              <span>Créditos</span>
-            </Link>
-          </div>
-
-          <div className={styles.navSection}>
-            <div className={styles.navSectionLabel}>Administración</div>
-            <Link href="/reportes" className={styles.navLink}>
-              <IconReports className={styles.navIcon} />
-              <span>Reportes & Finanzas</span>
-            </Link>
-            <Link href="/usuarios" className={styles.navLink}>
-              <IconUsers className={styles.navIcon} />
-              <span>Personal</span>
-            </Link>
-          </div>
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {(perfil?.nombre_completo ?? 'A')[0].toUpperCase()}
-            </div>
-            <div className={styles.userDetails}>
-              <span className={styles.userName}>{perfil?.nombre_completo}</span>
-              <span className={styles.userRole}>Administrador</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.btnLogout}
-            onClick={salir}
-            title="Cerrar sesión"
-          >
-            <IconLogout />
-          </button>
-        </div>
-      </aside>
+      <Sidebar active="cascos" menuAbierto={menuAbierto} onCerrarMenu={() => setMenuAbierto(false)} />
 
       {/* Contenedor Principal */}
       <div className={styles.mainWrapper}>

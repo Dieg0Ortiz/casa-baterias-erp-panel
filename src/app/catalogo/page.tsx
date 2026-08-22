@@ -38,6 +38,7 @@ import {
   IconCasco,
   IconUsers,
 } from '@/components/Icons';
+import { Sidebar } from '@/components/Sidebar';
 import styles from './catalogo.module.css';
 
 type ModalState =
@@ -180,100 +181,7 @@ function CatalogoAdmin() {
 
   return (
     <div className={styles.layout}>
-      {/* Backdrop para cerrar menú móvil al hacer tap fuera */}
-      {menuAbierto && (
-        <div
-          className={styles.sidebarBackdrop}
-          onClick={() => setMenuAbierto(false)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar Persistente y Drawer Móvil */}
-      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
-        <div className={styles.brand}>
-          <div className={styles.brandInfo}>
-            <span className={styles.brandIcon}><IconBolt /></span>
-            <div>
-              <h1 className={styles.brandTitle}>Casa Baterías</h1>
-              <p className={styles.brandSubtitle}>Control Central</p>
-            </div>
-          </div>
-          <button
-            className={styles.sidebarCloseBtn}
-            onClick={() => setMenuAbierto(false)}
-            aria-label="Cerrar menú"
-          >
-            <IconClose />
-          </button>
-        </div>
-
-        <nav className={styles.nav}>
-          <Link
-            href="/"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconDashboard className={styles.navIcon} />
-            <span>Dashboard</span>
-          </Link>
-          <Link
-            href="/catalogo"
-            className={`${styles.navItem} ${styles.navItemActive}`}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconCatalog className={styles.navIcon} />
-            <span>Catálogo</span>
-          </Link>
-          <Link
-            href="/inventario"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconInventory className={styles.navIcon} />
-            <span>Inventario</span>
-          </Link>
-          <Link
-            href="/cascos"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconCasco className={styles.navIcon} />
-            <span>Cascos</span>
-          </Link>
-          <Link
-            href="/usuarios"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconUsers className={styles.navIcon} />
-            <span>Trabajadores / Usuarios</span>
-          </Link>
-          <Link
-            href="/compras"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconInventory className={styles.navIcon} />
-            <span>Compras</span>
-          </Link>
-          <Link
-            href="/reportes"
-            className={styles.navItem}
-            onClick={() => setMenuAbierto(false)}
-          >
-            <IconReports className={styles.navIcon} />
-            <span>Reportes</span>
-          </Link>
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <button className={styles.logoutBtn} onClick={salir}>
-            <IconLogout />
-            <span>Cerrar Sesión</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar active="catalogo" menuAbierto={menuAbierto} onCerrarMenu={() => setMenuAbierto(false)} />
 
       {/* Contenido Principal */}
       <div className={styles.mainWrapper}>

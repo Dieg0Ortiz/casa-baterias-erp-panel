@@ -34,6 +34,7 @@ import {
   IconBuilding,
   IconReceipt,
 } from '@/components/Icons';
+import { Sidebar } from '@/components/Sidebar';
 import styles from './creditos.module.css';
 
 function mensajeError(e: unknown): string {
@@ -287,83 +288,7 @@ export default function CreditosPage() {
   return (
     <div className={styles.layout}>
       {/* Backdrop móvil */}
-      {menuAbierto && (
-        <div className={styles.sidebarBackdrop} onClick={() => setMenuAbierto(false)} aria-hidden="true" />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`${styles.sidebar} ${menuAbierto ? styles.sidebarOpen : ''}`}>
-        <div className={styles.brand}>
-          <div className={styles.brandInfo}>
-            <span className={styles.brandIcon}><IconBolt /></span>
-            <div>
-              <h1 className={styles.brandTitle}>Casa Baterías</h1>
-              <p className={styles.brandSubtitle}>Control Central</p>
-            </div>
-          </div>
-          <button className={styles.sidebarCloseBtn} onClick={() => setMenuAbierto(false)} aria-label="Cerrar menú">
-            <IconClose />
-          </button>
-        </div>
-
-        <nav className={styles.nav}>
-          <div className={styles.navSection}>
-            <div className={styles.navSectionLabel}>Operaciones</div>
-            <Link href="/" className={styles.navLink}>
-              <IconDashboard className={styles.navIcon} />
-              <span>Resumen</span>
-            </Link>
-            <Link href="/inventario" className={styles.navLink}>
-              <IconInventory className={styles.navIcon} />
-              <span>Inventario</span>
-            </Link>
-            <Link href="/catalogo" className={styles.navLink}>
-              <IconCatalog className={styles.navIcon} />
-              <span>Catálogo</span>
-            </Link>
-            <Link href="/cascos" className={styles.navLink}>
-              <IconCasco className={styles.navIcon} />
-              <span>Cascos & Trueques</span>
-            </Link>
-            <Link href="/compras" className={styles.navLink}>
-              <IconReceipt className={styles.navIcon} />
-              <span>Compras</span>
-            </Link>
-            <Link href="/creditos" className={`${styles.navLink} ${styles.navLinkActive}`}>
-              <IconBuilding className={styles.navIcon} />
-              <span>Créditos Empresariales</span>
-            </Link>
-          </div>
-
-          <div className={styles.navSection}>
-            <div className={styles.navSectionLabel}>Administración</div>
-            <Link href="/reportes" className={styles.navLink}>
-              <IconReports className={styles.navIcon} />
-              <span>Reportes & Finanzas</span>
-            </Link>
-            <Link href="/usuarios" className={styles.navLink}>
-              <IconUsers className={styles.navIcon} />
-              <span>Personal</span>
-            </Link>
-          </div>
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userInfo}>
-            <div className={styles.userAvatar}>
-              {(perfil?.nombre_completo ?? 'A')[0].toUpperCase()}
-            </div>
-            <div>
-              <p className={styles.userName}>{perfil?.nombre_completo ?? 'Usuario'}</p>
-              <p className={styles.userRole}>{perfil?.rol ?? 'Administrador'}</p>
-            </div>
-          </div>
-          <button className={styles.logoutBtn} onClick={() => logout()}>
-            <IconLogout />
-            <span>Cerrar sesión</span>
-          </button>
-        </div>
-      </aside>
+      <Sidebar active="creditos" menuAbierto={menuAbierto} onCerrarMenu={() => setMenuAbierto(false)} />
 
       {/* Main Content */}
       <main className={styles.main}>
