@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import Link from 'next/link';
@@ -36,6 +38,8 @@ import {
   IconMenu,
   IconCasco,
   IconUsers,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@/components/Icons';
 import { Sidebar } from '@/components/Sidebar';
 import styles from './catalogo.module.css';
@@ -51,6 +55,33 @@ function mensajeError(e: unknown): string {
   return e instanceof ApiError
     ? e.message
     : 'Ocurrió un error. Intenta de nuevo.';
+}
+
+function generarBotonesPaginacion(paginaActual: number, totalPaginas: number): (number | string)[] {
+  if (totalPaginas <= 5) {
+    return Array.from({ length: totalPaginas }, (_, i) => i + 1);
+  }
+
+  if (paginaActual <= 2) {
+    const inicio = [1, 2];
+    if (paginaActual === 2 && totalPaginas > 2) inicio.push(3);
+    const fin = [totalPaginas - 1, totalPaginas];
+    return [...inicio, 'dots-end', ...fin];
+  }
+
+  if (paginaActual >= totalPaginas - 1) {
+    return [totalPaginas - 2, totalPaginas - 1, totalPaginas];
+  }
+
+  const centro = [paginaActual - 1, paginaActual, paginaActual + 1];
+  
+  if (paginaActual + 1 < totalPaginas - 2) {
+    return [...centro, 'dots-end', totalPaginas - 1, totalPaginas];
+  } else if (paginaActual + 1 === totalPaginas - 2) {
+    return [...centro, totalPaginas - 1, totalPaginas];
+  } else {
+    return [paginaActual - 1, paginaActual, totalPaginas - 1, totalPaginas];
+  }
 }
 
 export default function CatalogoPage() {
@@ -98,6 +129,9 @@ function CatalogoAdmin() {
   const [modal, setModal] = useState<ModalState>(null);
   const [filtro, setFiltro] = useState('');
   const [operando, setOperando] = useState(false);
+  const [pagina, setPagina] = useState(1);
+
+  const ITEMS_POR_PAGINA = 10;
   const [menuAbierto, setMenuAbierto] = useState(false);
 
   async function recargar() {
@@ -177,6 +211,14 @@ function CatalogoAdmin() {
       (p.marcas?.nombre ?? '').toLowerCase().includes(f)
     );
   });
+
+  const totalPaginas = Math.ceil(visibles.length / ITEMS_POR_PAGINA) || 1;
+  const indiceInicio = (pagina - 1) * ITEMS_POR_PAGINA;
+  const paginados = visibles.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [filtro]);
 
   return (
     <div className={styles.layout}>
@@ -325,12 +367,12 @@ function CatalogoAdmin() {
                   <tbody>
                     {visibles.length === 0 && (
                       <tr>
-                        <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <td colSpan={10} style={{ padding: '36px', textAlign: 'center', color: 'var(--text-muted)' }}>
                           No se encontraron productos que coincidan con la búsqueda.
                         </td>
                       </tr>
                     )}
-                    {visibles.map((producto) => {
+                    {paginados.map((producto) => {
                       const totalExistencias = stockTotal(producto);
 
                       return (
@@ -439,6 +481,69 @@ function CatalogoAdmin() {
                 </table>
               )}
             </div>
+
+            {totalPaginas > 1 && (
+              <div className={styles.pagination}>
+                <div className={styles.paginationInfo}>
+                  Mostrando {indiceInicio + 1} - {Math.min(indiceInicio + ITEMS_POR_PAGINA, visibles.length)} de {visibles.length} productos
+                </div>
+                
+                <div className={styles.paginationControls}>
+                  <div className={styles.pageSelect}>
+                    <label>Pestaña:</label>
+                    <select
+                      value={pagina}
+                      onChange={(e) => setPagina(Number(e.target.value))}
+                    >
+                      {Array.from({ length: totalPaginas }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          Pág. {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className={styles.pageButtons}>
+                    <button
+                      type="button"
+                      className={styles.pageBtn}
+                      onClick={() => setPagina(p => Math.max(1, p - 1))}
+                      disabled={pagina === 1}
+                      title="Página anterior"
+                    >
+                      <IconChevronLeft />
+                    </button>
+
+                    {generarBotonesPaginacion(pagina, totalPaginas).map((item, idx) => {
+                      if (item === 'dots-start' || item === 'dots-end') {
+                        return <span key={idx} className={styles.pageDots}>...</span>;
+                      }
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          className={`${styles.pageBtn} ${item === pagina ? styles.pageBtnActive : ''}`}
+                          onClick={() => setPagina(item as number)}
+                        >
+                          {item}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      className={styles.pageBtn}
+                      onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                      disabled={pagina === totalPaginas}
+                      title="Página siguiente"
+                    >
+                      <IconChevronRight />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </section>
         </main>
       </div>
