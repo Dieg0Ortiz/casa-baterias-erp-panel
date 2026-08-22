@@ -61,6 +61,7 @@ export interface EditarProductoInput {
   precio_3?: number;
   comision_casco?: number;
   requiere_casco?: boolean;
+  codigo_barras?: string;
 }
 
 export interface NuevaMarcaInput {

@@ -948,6 +948,7 @@ function EditarProductoModal({
 
   const [marcaId, setMarcaId] = useState(marcaActual);
   const [modelo, setModelo] = useState(producto.modelo);
+  const [codigoBarras, setCodigoBarras] = useState(producto.codigo_barras || '');
   const [descripcion, setDescripcion] = useState(producto.descripcion ?? '');
   const [precioCompra, setPrecioCompra] = useState(producto.precio_compra != null ? String(producto.precio_compra) : '0');
   const [precio, setPrecio] = useState(String(producto.precio));
@@ -1007,6 +1008,7 @@ function EditarProductoModal({
       await actualizarProducto(producto.id, {
         marca_id: marcaId || undefined,
         modelo: modelo.trim(),
+        codigo_barras: codigoBarras.trim() || undefined,
         descripcion: descripcion.trim() || undefined,
         precio: precioNum,
         precio_2: p2Num,
@@ -1049,6 +1051,21 @@ function EditarProductoModal({
               onChange={(e) => setModelo(e.target.value)}
               autoFocus
             />
+          </label>
+        </div>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Código de Barras / SKU</span>
+            <input
+              className={styles.input}
+              value={codigoBarras}
+              onChange={(e) => setCodigoBarras(e.target.value)}
+              placeholder="Ej. 744926400475 o CB..."
+            />
+            <span className={styles.helperText}>
+              Código de barras lineal (1D) para escanear en caja POS.
+            </span>
           </label>
         </div>
 
