@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { api, clearSessionTokens, setSessionTokens } from './api';
 
 export interface PerfilUsuario {
@@ -42,52 +42,60 @@ export function getAccessToken(): string | null {
   return window.localStorage.getItem('erp_access_token');
 }
 
-/**
- * Suscribe a React a cambios de sesión. Escucha:
- * - `storage`: cambios de localStorage desde otras pestañas del navegador
- * - `erp_session_change`: cambios de sesión en la misma pestaña (login/logout)
- */
-function subscribe(callback: () => void): () => void {
-  window.addEventListener('storage', callback);
-  window.addEventListener(SESSION_CHANGE_EVENT, callback);
-  return () => {
-    window.removeEventListener('storage', callback);
-    window.removeEventListener(SESSION_CHANGE_EVENT, callback);
-  };
-}
-
-/** Invalida la caché y notifica a React para que re-lea la sesión. */
+/** Notifica a todos los hooks useSesion que la sesión cambió. */
 function notificarCambioSesion() {
-  cacheSesion = undefined;
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
   }
 }
 
-// Se cachea el snapshot para que useSyncExternalStore reciba una referencia
-// estable entre lecturas sin cambios.
-let cacheSesion: { key: string; sesion: Sesion } | undefined;
-
-function leerSesion(): Sesion {
+/** Lee la sesión actual directamente de localStorage. */
+function leerSesionActual(): Sesion {
   const token = getAccessToken();
   const perfil = getPerfil();
-  const key = `${token ?? ''}|${perfil?.id ?? ''}|${perfil?.rol ?? ''}`;
-  if (cacheSesion?.key === key) return cacheSesion.sesion;
-  const sesion: Sesion = { autenticado: token != null, perfil };
-  cacheSesion = { key, sesion };
-  return sesion;
+  return { autenticado: token != null, perfil };
 }
 
 /**
- * Estado de sesión del lado del cliente. En el servidor devuelve sesión
- * vacía (sin autenticar); tras la hidratación se lee el localStorage.
- * Persiste la sesión entre recargas de página gracias a localStorage.
+ * Estado de sesión del lado del cliente.
+ *
+ * Usa useState con lazy initialization para leer localStorage
+ * sincrónicamente en el primer render del cliente. Esto garantiza
+ * que `autenticado` sea `true` desde el primer render si hay tokens
+ * guardados, evitando el redirect falso a /login al refrescar.
+ *
+ * En el servidor (SSR) devuelve { autenticado: false, perfil: null }.
  */
 export function useSesion(): Sesion {
-  return useSyncExternalStore(subscribe, leerSesion, () => ({
-    autenticado: false,
-    perfil: null,
-  }));
+  const [sesion, setSesion] = useState<Sesion>(() => {
+    // SSR: no hay localStorage
+    if (typeof window === 'undefined') {
+      return { autenticado: false, perfil: null };
+    }
+    // Cliente: lee localStorage sincrónicamente en el primer render
+    return leerSesionActual();
+  });
+
+  useEffect(() => {
+    // Re-leer al montar como safety net (por si la lazy init
+    // no capturó el estado más reciente durante hidratación).
+    setSesion(leerSesionActual());
+
+    function actualizar() {
+      setSesion(leerSesionActual());
+    }
+
+    // Escuchar cambios de localStorage desde otras pestañas
+    window.addEventListener('storage', actualizar);
+    // Escuchar login/logout en la misma pestaña
+    window.addEventListener(SESSION_CHANGE_EVENT, actualizar);
+    return () => {
+      window.removeEventListener('storage', actualizar);
+      window.removeEventListener(SESSION_CHANGE_EVENT, actualizar);
+    };
+  }, []);
+
+  return sesion;
 }
 
 export async function login(
@@ -109,3 +117,4 @@ export function logout() {
   window.localStorage.removeItem(PERFIL_KEY);
   notificarCambioSesion();
 }
+
