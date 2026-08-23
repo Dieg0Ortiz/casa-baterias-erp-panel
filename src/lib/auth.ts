@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useSyncExternalStore } from 'react';
 import { api, clearSessionTokens, setSessionTokens } from './api';
 

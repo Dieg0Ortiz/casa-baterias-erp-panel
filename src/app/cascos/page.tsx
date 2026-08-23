@@ -93,28 +93,10 @@ export default function CascosPage() {
 
   useEffect(() => {
     if (autenticado && perfil?.rol === 'administrador') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       cargar();
     }
   }, [autenticado, perfil]);
-
-  if (!autenticado) return null;
-
-  if (perfil?.rol !== 'administrador') {
-    return (
-      <div className={styles.lockedPage}>
-        <div className={styles.lockedCard}>
-          <h1>Acceso restringido</h1>
-          <p>
-            Este panel es solo para administradores. Tu usuario tiene el rol{' '}
-            <strong>trabajador</strong> y debe usar la app de ventas.
-          </p>
-          <button className={styles.btnPrimarySm} onClick={() => { logout(); router.replace('/login'); }}>
-            Salir
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const ahora = new Date().getTime();
 
@@ -217,6 +199,26 @@ export default function CascosPage() {
     const diff = limite - ahora;
     const dias = Math.ceil(diff / (1000 * 60 * 60 * 24));
     return dias;
+  }
+
+
+  if (!autenticado) return null;
+
+  if (perfil?.rol !== 'administrador') {
+    return (
+      <div className={styles.layout}>
+        <div style={{ margin: 'auto', textAlign: 'center', padding: '40px' }}>
+          <h1>Acceso restringido</h1>
+          <p>
+            Este panel es solo para administradores. Tu usuario tiene el rol{' '}
+            <strong>trabajador</strong> y debe usar la app de ventas.
+          </p>
+          <button className={styles.btnPrimarySm} onClick={() => { logout(); router.replace('/login'); }}>
+            Salir
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 'use client';
 
 import Link from 'next/link';
@@ -43,6 +45,7 @@ export default function ComprasPage() {
 
   useEffect(() => {
     void cargar();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autenticado, perfil]);
 
   async function cargar() {

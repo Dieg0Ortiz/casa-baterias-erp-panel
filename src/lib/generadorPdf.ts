@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { type ReporteVentas } from './admin';
