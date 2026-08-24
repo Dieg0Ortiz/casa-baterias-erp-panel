@@ -434,13 +434,13 @@ export default function CreditosPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '20%' }}>Empresa</th>
-                      <th style={{ width: '20%' }}>Contacto & Teléfono</th>
-                      <th style={{ width: '10%' }}>Plazo</th>
-                      <th style={{ width: '15%' }}>Límite</th>
+                      <th style={{ width: '18%' }}>Empresa</th>
+                      <th style={{ width: '17%' }}>Contacto & Teléfono</th>
+                      <th style={{ width: '8%' }}>Plazo</th>
+                      <th style={{ width: '13%' }}>Límite</th>
                       <th style={{ width: '12%', textAlign: 'right' }}>Deuda</th>
                       <th style={{ width: '10%', textAlign: 'center' }}>Estado</th>
-                      <th style={{ width: '13%', textAlign: 'right' }}>Acciones</th>
+                      <th style={{ width: '22%', textAlign: 'right' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>

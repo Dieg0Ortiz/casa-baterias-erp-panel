@@ -428,6 +428,7 @@
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
+  min-width: 860px;
 }
 
 .table th {
