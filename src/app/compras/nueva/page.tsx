@@ -38,6 +38,52 @@ interface ItemCarrito {
   precio_unitario: number;
 }
 
+/** Grupos de cascos con sus baterías y precio de compra (Villaflores). */
+const GRUPOS_CASCOS = [
+  {
+    id: 'grupo-1',
+    nombre: 'Grupo 1 — Chico',
+    baterias: ['99', '40ENL', '151R', '44B19'],
+    precio: 120,
+  },
+  {
+    id: 'grupo-2',
+    nombre: 'Grupo 2 — Intermedio',
+    baterias: ['22F', '26R', '42', '42R', '51R', '58', '58R'],
+    precio: 165,
+  },
+  {
+    id: 'grupo-3',
+    nombre: 'Grupo 3 — Mediano',
+    baterias: ['24', '24R', '34', '35', '41', '47', '48', '75', '75/86', '34/78'],
+    precio: 240,
+  },
+  {
+    id: 'grupo-4',
+    nombre: 'Grupo 4 — Intergrande',
+    baterias: ['27', '49', '65', '94R'],
+    precio: 275,
+  },
+  {
+    id: 'grupo-5',
+    nombre: 'Grupo 5 — Grande',
+    baterias: ['31T', '31P', '31RP'],
+    precio: 350,
+  },
+  {
+    id: 'grupo-6',
+    nombre: 'Grupo 6 — Extra Grande',
+    baterias: ['4DLT'],
+    precio: 555,
+  },
+  {
+    id: 'grupo-7',
+    nombre: 'Grupo 7 — Jumbo',
+    baterias: ['8D'],
+    precio: 705,
+  },
+] as const;
+
 export default function NuevaCompraPage() {
   const router = useRouter();
   const { autenticado, perfil } = useSesion();
@@ -59,6 +105,7 @@ export default function NuevaCompraPage() {
   const [filtroBaterias, setFiltroBaterias] = useState('');
   const [cantSelec, setCantSelec] = useState('1');
   const [costoSelec, setCostoSelec] = useState('');
+  const [grupoCascoSelec, setGrupoCascoSelec] = useState(GRUPOS_CASCOS[0]);
 
   const [guardando, setGuardando] = useState(false);
 
@@ -122,8 +169,9 @@ export default function NuevaCompraPage() {
       return;
     }
 
-    const costo = Number(costoSelec);
-    if (isNaN(costo) || costo < 0 || costoSelec.trim() === '') {
+    // Para cascos el precio viene del grupo seleccionado
+    const costo = tipoAgregando === 'casco' ? grupoCascoSelec.precio : Number(costoSelec);
+    if (tipoAgregando === 'bateria' && (isNaN(costo) || costo < 0 || costoSelec.trim() === '')) {
       alert('Ingresa un costo unitario válido (ej. 1200.00)');
       return;
     }
@@ -154,9 +202,9 @@ export default function NuevaCompraPage() {
           id_carrito: Math.random().toString(36).substring(7),
           tipo_item: 'casco',
           producto_id: 'casco-lote',
-          descripcion: 'Lote de Cascos / Baterías Viejas',
+          descripcion: `Casco ${grupoCascoSelec.nombre} (${grupoCascoSelec.baterias.join(', ')})`,
           cantidad,
-          precio_unitario: costo,
+          precio_unitario: grupoCascoSelec.precio,
         },
       ]);
     }
@@ -407,46 +455,99 @@ export default function NuevaCompraPage() {
                           )}
                         </div>
                       ) : (
-                        <div className={styles.field}>
-                          <label className={styles.fieldLabel}>Cascos / Baterías Viejas</label>
-                          <input
-                            className={styles.input}
-                            value="Cascos Reciclados / Adquisición por Lote"
-                            disabled
-                            style={{ background: 'var(--surface-container-low)' }}
-                          />
-                          <span className={styles.helperText}>
-                            Se sumará directamente al contador de cascos disponibles en la sucursal seleccionada.
-                          </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <label className={styles.fieldLabel}>Selecciona el grupo del casco</label>
+                          <div className={styles.productResultsList} style={{ maxHeight: '320px' }}>
+                            {GRUPOS_CASCOS.map((grupo) => {
+                              const isSelected = grupoCascoSelec.id === grupo.id;
+                              return (
+                                <div
+                                  key={grupo.id}
+                                  className={`${styles.productItemOption} ${isSelected ? styles.productItemOptionSelected : ''}`}
+                                  onClick={() => setGrupoCascoSelec(grupo)}
+                                >
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
+                                      {grupo.nombre}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', lineHeight: 1.4, whiteSpace: 'normal' }}>
+                                      {grupo.baterias.join(', ')}
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary)' }}>
+                                      {formatearDinero(grupo.precio)}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>por casco</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div style={{ padding: '8px 12px', background: 'var(--surface-container-low)', borderRadius: 'var(--radius-sm)', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Seleccionado: <strong>{grupoCascoSelec.nombre}</strong></span>
+                            <span className="mono" style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatearDinero(grupoCascoSelec.precio)} c/u</span>
+                          </div>
                         </div>
                       )}
 
                       <div className={styles.formRow} style={{ marginTop: '16px' }}>
-                        <div className={styles.field}>
-                          <label className={styles.fieldLabel}>Cantidad a Comprar</label>
-                          <input
-                            type="number"
-                            className={styles.input}
-                            value={cantSelec}
-                            onChange={(e) => setCantSelec(e.target.value)}
-                            min="1"
-                            required
-                          />
-                        </div>
-
-                        <div className={styles.field}>
-                          <label className={styles.fieldLabel}>Costo Unitario ($ MXN)</label>
-                          <input
-                            type="number"
-                            className={styles.input}
-                            value={costoSelec}
-                            onChange={(e) => setCostoSelec(e.target.value)}
-                            min="0"
-                            step="0.01"
-                            placeholder="Ej. 1250.00"
-                            required
-                          />
-                        </div>
+                        {tipoAgregando === 'bateria' ? (
+                          <>
+                            <div className={styles.field}>
+                              <label className={styles.fieldLabel}>Cantidad a Comprar</label>
+                              <input
+                                type="number"
+                                className={styles.input}
+                                value={cantSelec}
+                                onChange={(e) => setCantSelec(e.target.value)}
+                                min="1"
+                                required
+                              />
+                            </div>
+                            <div className={styles.field}>
+                              <label className={styles.fieldLabel}>Costo Unitario ($ MXN)</label>
+                              <input
+                                type="number"
+                                className={styles.input}
+                                value={costoSelec}
+                                onChange={(e) => setCostoSelec(e.target.value)}
+                                min="0"
+                                step="0.01"
+                                placeholder="Ej. 1250.00"
+                                required
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className={styles.field}>
+                              <label className={styles.fieldLabel}>Cantidad de Cascos</label>
+                              <input
+                                type="number"
+                                className={styles.input}
+                                value={cantSelec}
+                                onChange={(e) => setCantSelec(e.target.value)}
+                                min="1"
+                                required
+                              />
+                            </div>
+                            <div className={styles.field}>
+                              <label className={styles.fieldLabel}>Precio por Casco ($ MXN)</label>
+                              <input
+                                type="number"
+                                className={styles.input}
+                                value={grupoCascoSelec.precio}
+                                disabled
+                                style={{ background: 'var(--surface-container-low)', fontWeight: 700, color: 'var(--primary)' }}
+                              />
+                              <span className={styles.helperText}>
+                                Precio fijo según grupo seleccionado.
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
 
                       <button
