@@ -16,6 +16,7 @@ import {
   IconBuilding,
   IconReports,
   IconUsers,
+  IconStore,
   IconLogout,
   IconClose,
 } from '@/components/Icons';
@@ -29,7 +30,8 @@ export type SidebarActiveItem =
   | 'compras'
   | 'creditos'
   | 'reportes'
-  | 'usuarios';
+  | 'usuarios'
+  | 'sucursales';
 
 interface SidebarProps {
   active: SidebarActiveItem;
@@ -64,6 +66,7 @@ export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarPr
       items: [
         { href: '/reportes', label: 'Reportes & Finanzas', key: 'reportes', icon: IconReports },
         { href: '/usuarios', label: 'Personal', key: 'usuarios', icon: IconUsers },
+        { href: '/sucursales', label: 'Sucursales', key: 'sucursales', icon: IconStore },
       ],
     },
   ];

@@ -98,7 +98,22 @@ export interface SucursalItem {
   id: string;
   nombre: string;
   es_matriz: boolean;
+  direccion?: string | null;
   activo?: boolean;
+  empleados_count?: number;
+  created_at?: string;
+}
+
+export interface CrearSucursalInput {
+  nombre: string;
+  es_matriz?: boolean;
+  direccion?: string;
+}
+
+export interface ActualizarSucursalInput {
+  nombre?: string;
+  es_matriz?: boolean;
+  direccion?: string;
 }
 
 export interface CrearUsuarioInput {
@@ -137,6 +152,20 @@ export function listarEmpleados() {
 
 export function listarSucursales() {
   return api<SucursalItem[]>('/admin/sucursales');
+}
+
+export function crearSucursal(input: CrearSucursalInput) {
+  return api<SucursalItem>('/admin/sucursales', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function actualizarSucursal(id: string, input: ActualizarSucursalInput) {
+  return api<SucursalItem>(`/admin/sucursales/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
 }
 
 export function crearUsuario(input: CrearUsuarioInput) {
