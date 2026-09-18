@@ -200,7 +200,6 @@ function InventarioAdmin() {
       await eliminarExistencias({
         producto_id: item.producto_id,
         sucursal_id: item.sucursal_id,
-        cantidad: item.cantidad,
       });
       await cargar(sucursalId);
     } catch (e) {
@@ -688,7 +687,7 @@ function AjustarExistenciaModal({
       await eliminarExistencias({
         producto_id: ajuste.productoId,
         sucursal_id: ajuste.sucursalId,
-        cantidad: modo === 'restar' ? cantNum : ajuste.cantidadActual,
+        ...(modo === 'restar' ? { cantidad: cantNum } : {}),
       });
       await onGuardado();
     } catch (err) {

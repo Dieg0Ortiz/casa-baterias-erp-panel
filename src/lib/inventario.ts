@@ -95,11 +95,12 @@ export function ajustarInventario(input: AjustarInventarioInput) {
 export interface EliminarExistenciasInput {
   producto_id: string;
   sucursal_id: string;
-  cantidad: number;
+  /** Si se omite, el API vacía la existencia a 0. */
+  cantidad?: number;
 }
 
 export function eliminarExistencias(input: EliminarExistenciasInput) {
-  return api<unknown>('/inventory/eliminar-existencias', {
+  return api<unknown>('/inventory/eliminar-existencia', {
     method: 'POST',
     body: JSON.stringify(input),
   });
