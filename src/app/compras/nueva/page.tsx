@@ -84,6 +84,8 @@ const GRUPOS_CASCOS = [
   },
 ] as const;
 
+type GrupoCasco = (typeof GRUPOS_CASCOS)[number];
+
 export default function NuevaCompraPage() {
   const router = useRouter();
   const { autenticado, perfil } = useSesion();
@@ -105,7 +107,7 @@ export default function NuevaCompraPage() {
   const [filtroBaterias, setFiltroBaterias] = useState('');
   const [cantSelec, setCantSelec] = useState('1');
   const [costoSelec, setCostoSelec] = useState('');
-  const [grupoCascoSelec, setGrupoCascoSelec] = useState(GRUPOS_CASCOS[0]);
+  const [grupoCascoSelec, setGrupoCascoSelec] = useState<GrupoCasco>(GRUPOS_CASCOS[0]);
 
   const [guardando, setGuardando] = useState(false);
 
