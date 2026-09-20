@@ -78,6 +78,27 @@ export function reabastecerInventario(input: ReabastecerInput) {
   });
 }
 
+export interface CargaMasivaInput {
+  sucursal_id: string;
+  /** `sumar` acumula sobre lo que ya hay; `reemplazar` deja la cantidad exacta. */
+  modo: 'sumar' | 'reemplazar';
+  items: { codigo_barras: string; cantidad: number }[];
+}
+
+export interface CargaMasivaResultado {
+  modo: string;
+  aplicados: number;
+  unidades: number;
+  no_encontrados: string[];
+}
+
+export function cargarExistenciasMasivo(input: CargaMasivaInput) {
+  return api<CargaMasivaResultado>('/inventory/carga-masiva', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export interface AjustarInventarioInput {
   producto_id: string;
   sucursal_id: string;

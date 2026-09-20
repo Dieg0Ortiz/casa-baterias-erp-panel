@@ -9,8 +9,10 @@ import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
 import { type Producto, formatearDinero, listarProductos, listarSucursales } from '@/lib/catalogo';
 import {
+  type CargaMasivaResultado,
   type ItemInventario,
   type Transferencia,
+  cargarExistenciasMasivo,
   eliminarExistencias,
   listarInventario,
   listarTransferencias,
@@ -43,6 +45,38 @@ interface AjustarState {
   sucursalId: string;
   modelo: string;
   cantidadActual: number;
+}
+
+interface RenglonCarga {
+  codigo_barras: string;
+  cantidad: number;
+}
+
+// Cada línea es "código cantidad". Si la cantidad se omite vale 1, para poder
+// escanear una pieza por línea; el servidor agrupa los códigos repetidos.
+function parsearRenglones(texto: string): {
+  renglones: RenglonCarga[];
+  ignoradas: string[];
+} {
+  const renglones: RenglonCarga[] = [];
+  const ignoradas: string[] = [];
+
+  for (const cruda of texto.split(/\r?\n/)) {
+    const linea = cruda.trim();
+    if (!linea) continue;
+
+    const partes = linea.split(/[\s,;]+/).filter(Boolean);
+    const codigo = partes[0];
+    const cantidad = partes[1] === undefined ? 1 : Number(partes[1]);
+
+    if (!codigo || partes.length > 2 || !Number.isInteger(cantidad) || cantidad < 0) {
+      ignoradas.push(linea);
+      continue;
+    }
+    renglones.push({ codigo_barras: codigo, cantidad });
+  }
+
+  return { renglones, ignoradas };
 }
 
 function mensajeError(e: unknown): string {
@@ -130,6 +164,7 @@ function InventarioAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [modalTransf, setModalTransf] = useState(false);
   const [modalReabastecer, setModalReabastecer] = useState(false);
+  const [modalCargaMasiva, setModalCargaMasiva] = useState(false);
   const [modalAjustar, setModalAjustar] = useState<AjustarState | null>(null);
   const [operando, setOperando] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -302,6 +337,15 @@ function InventarioAdmin() {
               >
                 <IconAdd style={{ width: '14px', height: '14px' }} />
                 <span>Entrada de Inventario</span>
+              </button>
+
+              <button
+                className={styles.btnSecondary}
+                onClick={() => setModalCargaMasiva(true)}
+                disabled={cargando}
+                title="Cargar las existencias de toda una sucursal de una sola vez"
+              >
+                Carga Masiva
               </button>
 
               <button
@@ -580,6 +624,19 @@ function InventarioAdmin() {
         />
       )}
 
+      {/* Modal de Carga Masiva de Existencias */}
+      {modalCargaMasiva && (
+        <CargaMasivaModal
+          sucursales={sucursales}
+          sucursalActualId={sucursalId}
+          onCerrar={() => setModalCargaMasiva(false)}
+          onGuardado={async () => {
+            setModalCargaMasiva(false);
+            await cargar(sucursalId);
+          }}
+        />
+      )}
+
       {/* Modal de Transferencia */}
       {modalTransf && (
         <TransferenciaModal
@@ -764,6 +821,195 @@ function AjustarExistenciaModal({
               : modo === 'vaciar'
               ? 'Eliminar y Vaciar a 0'
               : 'Aplicar Retiro de Stock'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function CargaMasivaModal({
+  sucursales,
+  sucursalActualId,
+  onCerrar,
+  onGuardado,
+}: {
+  sucursales: { id: string; nombre: string; es_matriz?: boolean }[];
+  sucursalActualId: string;
+  onCerrar: () => void;
+  onGuardado: () => void | Promise<void>;
+}) {
+  const [sucursalId, setSucursalId] = useState(
+    sucursalActualId || sucursales[0]?.id || '',
+  );
+  const [modo, setModo] = useState<'sumar' | 'reemplazar'>('sumar');
+  const [texto, setTexto] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<CargaMasivaResultado | null>(null);
+
+  const { renglones, ignoradas } = parsearRenglones(texto);
+  const unidades = renglones.reduce((suma, r) => suma + r.cantidad, 0);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (!sucursalId) {
+      setError('Selecciona la sucursal.');
+      return;
+    }
+    if (renglones.length === 0) {
+      setError('Pega al menos un código de barras.');
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      const res = await cargarExistenciasMasivo({
+        sucursal_id: sucursalId,
+        modo,
+        items: renglones,
+      });
+      setResultado(res);
+      setGuardando(false);
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre ?? '';
+
+  if (resultado) {
+    return (
+      <Modal titulo="Carga Masiva de Existencias" onCerrar={() => void onGuardado()}>
+        <div className={styles.form}>
+          <p style={{ fontSize: '14px', margin: 0 }}>
+            Se {resultado.modo === 'sumar' ? 'sumaron' : 'fijaron'}{' '}
+            <strong className="mono" style={{ color: 'var(--primary)' }}>
+              {resultado.unidades}
+            </strong>{' '}
+            unidades en{' '}
+            <strong className="mono" style={{ color: 'var(--primary)' }}>
+              {resultado.aplicados}
+            </strong>{' '}
+            productos de {nombreSucursal}.
+          </p>
+
+          {resultado.no_encontrados.length > 0 && (
+            <div>
+              <p style={{ fontSize: '13px', margin: '0 0 6px' }}>
+                Estos códigos no están en el catálogo y quedaron sin aplicar. Da de
+                alta el producto y vuelve a cargarlos:
+              </p>
+              <p
+                className="mono"
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  margin: 0,
+                  maxHeight: '160px',
+                  overflowY: 'auto',
+                }}
+              >
+                {resultado.no_encontrados.join(', ')}
+              </p>
+            </div>
+          )}
+
+          <div className={styles.modalFooter}>
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={() => void onGuardado()}
+            >
+              Listo
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal titulo="Carga Masiva de Existencias" onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Sucursal</span>
+            <select
+              className={styles.input}
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+            >
+              {sucursales.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre} {s.es_matriz ? '(Matriz)' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Qué hacer con lo que ya hay</span>
+            <select
+              className={styles.input}
+              value={modo}
+              onChange={(e) => setModo(e.target.value as 'sumar' | 'reemplazar')}
+            >
+              <option value="sumar">Sumar (entrada de mercancía)</option>
+              <option value="reemplazar">Reemplazar (conteo físico)</option>
+            </select>
+          </label>
+        </div>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Códigos de barras, uno por línea, con la cantidad
+          </span>
+          <textarea
+            className={styles.input}
+            rows={10}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder={'7501121600023 6\n7501121600030 4\n7501121600047'}
+            autoFocus
+            style={{ fontFamily: 'monospace', resize: 'vertical' }}
+          />
+        </label>
+
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
+          Si omites la cantidad se cuenta 1, así puedes escanear una pieza por
+          línea. Los códigos repetidos se suman.{' '}
+          <strong className="mono" style={{ color: 'var(--primary)' }}>
+            {renglones.length}
+          </strong>{' '}
+          renglones,{' '}
+          <strong className="mono" style={{ color: 'var(--primary)' }}>
+            {unidades}
+          </strong>{' '}
+          unidades.
+          {ignoradas.length > 0 && (
+            <>
+              {' '}
+              {ignoradas.length} línea{ignoradas.length === 1 ? '' : 's'} sin formato
+              válido se ignorará{ignoradas.length === 1 ? '' : 'n'}.
+            </>
+          )}
+        </p>
+
+        {error && <p className={styles.errorBanner}>{error}</p>}
+
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            className={styles.btnPrimary}
+            disabled={guardando || renglones.length === 0}
+          >
+            {guardando ? 'Cargando…' : `Cargar ${renglones.length} productos`}
           </button>
         </div>
       </form>
