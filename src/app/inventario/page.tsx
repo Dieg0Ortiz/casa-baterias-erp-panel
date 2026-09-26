@@ -54,6 +54,14 @@ interface RenglonCarga {
 
 // Cada línea es "código cantidad". Si la cantidad se omite vale 1, para poder
 // escanear una pieza por línea; el servidor agrupa los códigos repetidos.
+function coincideProducto(producto: Producto, consulta: string): boolean {
+  const tokens = consulta.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  const texto =
+    `${producto.modelo} ${producto.marcas?.nombre ?? ''} ${producto.codigo_barras}`.toLowerCase();
+  return tokens.every((t) => texto.includes(t));
+}
+
 function parsearRenglones(texto: string): {
   renglones: RenglonCarga[];
   ignoradas: string[];
@@ -1033,16 +1041,40 @@ function ReabastecerModal({
   const [sucursalId, setSucursalId] = useState(
     sucursalActualId || sucursales[0]?.id || '',
   );
-  const [productoId, setProductoId] = useState(catalogo[0]?.id || '');
+  const [productoId, setProductoId] = useState('');
+  const [busqueda, setBusqueda] = useState('');
   const [cantidad, setCantidad] = useState('1');
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const coincidencias = catalogo.filter((p) => coincideProducto(p, busqueda));
   const productoSeleccionado = catalogo.find((p) => p.id === productoId);
   const stockEnSucursal = (productoSeleccionado?.inventario ?? []).find(
     (inv) => inv.sucursal_id === sucursalId,
   )?.cantidad ?? 0;
+
+  function elegirProducto(id: string) {
+    const elegido = catalogo.find((p) => p.id === id);
+    setProductoId(id);
+    setBusqueda(
+      elegido
+        ? `${elegido.marcas?.nombre ?? ''} ${elegido.modelo}`.trim()
+        : '',
+    );
+    setError(null);
+  }
+
+  function cambiarBusqueda(valor: string) {
+    setBusqueda(valor);
+    const matches = catalogo.filter((p) => coincideProducto(p, valor));
+    if (matches.length === 1) {
+      setProductoId(matches[0].id);
+      setError(null);
+    } else if (productoId && !matches.some((p) => p.id === productoId)) {
+      setProductoId('');
+    }
+  }
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
@@ -1103,25 +1135,50 @@ function ReabastecerModal({
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
               placeholder="10"
-              autoFocus
             />
           </label>
         </div>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Producto / Batería</span>
-          <select
+          <span className={styles.fieldLabel}>Buscar pila (marca y modelo)</span>
+          <input
             className={styles.input}
-            value={productoId}
-            onChange={(e) => setProductoId(e.target.value)}
-          >
-            {catalogo.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.modelo} — {p.marcas?.nombre ?? 'Sin Marca'} ({formatearDinero(p.precio)})
-              </option>
-            ))}
-          </select>
+            value={busqueda}
+            onChange={(e) => cambiarBusqueda(e.target.value)}
+            placeholder="Ej. GONHER 47"
+            autoFocus
+          />
         </label>
+
+        {busqueda.trim() && coincidencias.length === 0 && (
+          <p style={{ fontSize: '12px', color: 'var(--error)', margin: '-4px 0 4px' }}>
+            No hay ninguna pila que coincida con “{busqueda.trim()}”.
+          </p>
+        )}
+
+        {busqueda.trim() && coincidencias.length > 1 && (
+          <ul className={styles.resultadosBusqueda}>
+            {coincidencias.slice(0, 8).map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={productoId === p.id ? styles.resultadoActivo : undefined}
+                  onClick={() => elegirProducto(p.id)}
+                >
+                  <span>
+                    {p.marcas?.nombre ?? 'Sin Marca'} {p.modelo}
+                  </span>
+                  <span className="mono">{formatearDinero(p.precio)}</span>
+                </button>
+              </li>
+            ))}
+            {coincidencias.length > 8 && (
+              <li className={styles.resultadoMas}>
+                +{coincidencias.length - 8} más. Sigue escribiendo para acotar.
+              </li>
+            )}
+          </ul>
+        )}
 
         {productoSeleccionado && (
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
