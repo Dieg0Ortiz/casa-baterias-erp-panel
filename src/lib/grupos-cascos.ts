@@ -57,10 +57,23 @@ function compactar(valor: string): string {
   return valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-/** Asigna el grupo del proveedor a un modelo ("24 R" → Grupo 3, "151R" → Grupo 1). */
+/**
+ * Asigna el grupo del proveedor. "24 R" cae en 24R, "31 T-900" en 31T y
+ * "151R BD" en 151R: se arman los códigos uniendo los trozos del modelo y
+ * gana la coincidencia más larga, para no confundir 24 con 24R.
+ */
 export function grupoDeModelo(modelo: string | null | undefined): GrupoCasco | typeof SIN_GRUPO {
-  const compacto = compactar(modelo ?? '');
-  if (!compacto) return SIN_GRUPO;
+  const trozos = (modelo ?? '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  if (trozos.length === 0) return SIN_GRUPO;
+
+  const candidatos: string[] = [];
+  for (let i = 0; i < trozos.length; i++) {
+    let junto = '';
+    for (let j = i; j < trozos.length && junto.length < 12; j++) {
+      junto += trozos[j];
+      candidatos.push(junto);
+    }
+  }
 
   const codigos = GRUPOS_CASCOS.flatMap((grupo) =>
     grupo.baterias.map((bateria) => ({
@@ -70,14 +83,7 @@ export function grupoDeModelo(modelo: string | null | undefined): GrupoCasco | t
   ).sort((a, b) => b.codigo.length - a.codigo.length);
 
   for (const item of codigos) {
-    if (!item.codigo) continue;
-    if (compacto === item.codigo) return item.grupo;
-    if (
-      compacto.startsWith(item.codigo) &&
-      !/[A-Z0-9]/.test(compacto.charAt(item.codigo.length))
-    ) {
-      return item.grupo;
-    }
+    if (candidatos.includes(item.codigo)) return item.grupo;
   }
 
   return SIN_GRUPO;
