@@ -8,8 +8,11 @@ import { logout, useSesion } from '@/lib/auth';
 import {
   type CascoPendiente,
   type IntercambioCasco,
+  type MovimientoCasco,
+  ajustarCascoBodega,
   listarCascosPendientes,
   listarIntercambiosCascos,
+  listarMovimientosCascos,
   registrarIntercambioCasco,
   resolverCasco,
 } from '@/lib/admin';
@@ -21,6 +24,7 @@ import {
   listarSucursales,
 } from '@/lib/catalogo';
 import { type ItemInventario, listarInventario } from '@/lib/inventario';
+import { GRUPOS_CASCOS, SIN_GRUPO, grupoDeModelo } from '@/lib/grupos-cascos';
 import {
   IconSearch,
   IconClose,
@@ -47,6 +51,7 @@ export default function CascosPage() {
 
   const [cascos, setCascos] = useState<CascoPendiente[]>([]);
   const [intercambios, setIntercambios] = useState<IntercambioCasco[]>([]);
+  const [movimientos, setMovimientos] = useState<MovimientoCasco[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [inventario, setInventario] = useState<ItemInventario[]>([]);
@@ -54,7 +59,13 @@ export default function CascosPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [pestañaPrincipal, setPestañaPrincipal] = useState<'depositos' | 'modelos' | 'intercambios'>('depositos');
+  const [pestañaPrincipal, setPestañaPrincipal] = useState<'depositos' | 'modelos' | 'bodega' | 'intercambios'>('depositos');
+  const [sucursalBodega, setSucursalBodega] = useState('');
+  const [ajusteBodega, setAjusteBodega] = useState<{
+    tipo: 'alta' | 'baja_proveedor';
+    productoId: string;
+    sucursalId: string;
+  } | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'resuelto' | 'vencido'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -72,15 +83,17 @@ export default function CascosPage() {
     setCargando(true);
     setError(null);
     try {
-      const [datosCascos, datosIntercambios, datosProductos, datosSucursales, datosInventario] = await Promise.all([
+      const [datosCascos, datosIntercambios, datosProductos, datosSucursales, datosInventario, datosMovimientos] = await Promise.all([
         listarCascosPendientes().catch(() => []),
         listarIntercambiosCascos().catch(() => []),
         listarProductos().catch(() => []),
         listarSucursales().catch(() => []),
         listarInventario().catch(() => []),
+        listarMovimientosCascos().catch(() => []),
       ]);
       setCascos(datosCascos);
       setIntercambios(datosIntercambios);
+      setMovimientos(datosMovimientos);
       setProductos(datosProductos);
       setSucursales(datosSucursales);
       setInventario(datosInventario);
@@ -138,7 +151,7 @@ export default function CascosPage() {
   const montoRetenido = cascos
     .filter((c) => c.estado === 'pendiente')
     .reduce((s, c) => s + c.comision_cobrada, 0);
-  const totalResueltos = cascos.filter((c) => c.estado === 'resuelto').length;
+  const cascosEnBodega = inventario.reduce((s, i) => s + (i.cascos_disponibles || 0), 0);
 
   const totalIntercambios = intercambios.length;
   const gananciaIntercambios = intercambios.reduce((s, i) => s + Number(i.monto_cobrado || 0), 0);
@@ -193,6 +206,36 @@ export default function CascosPage() {
 
     return Array.from(mapa.values()).sort((a, b) => b.cantidad - a.cantidad);
   }, [cascos]);
+
+  const filasBodega = useMemo(() => {
+    return inventario
+      .filter((i) => i.cascos_disponibles > 0 && (!sucursalBodega || i.sucursal_id === sucursalBodega))
+      .map((i) => ({
+        ...i,
+        grupo: grupoDeModelo(i.modelo),
+        sucursal: sucursales.find((s) => s.id === i.sucursal_id)?.nombre ?? '—',
+      }))
+      .sort((a, b) =>
+        a.grupo.nombre.localeCompare(b.grupo.nombre, 'es') ||
+        (a.modelo ?? '').localeCompare(b.modelo ?? '', 'es') ||
+        a.sucursal.localeCompare(b.sucursal, 'es'),
+      );
+  }, [inventario, sucursalBodega, sucursales]);
+
+  const resumenGrupos = useMemo(() => {
+    const base = [...GRUPOS_CASCOS, SIN_GRUPO].map((grupo) => ({
+      ...grupo,
+      cantidad: 0,
+      valor: 0,
+    }));
+    for (const fila of filasBodega) {
+      const slot = base.find((grupo) => grupo.id === fila.grupo.id);
+      if (!slot) continue;
+      slot.cantidad += fila.cascos_disponibles;
+      slot.valor += fila.cascos_disponibles * fila.grupo.precio;
+    }
+    return base;
+  }, [filasBodega]);
 
   function calcularDiasRestantes(fechaLimiteIso: string) {
     const limite = new Date(fechaLimiteIso).getTime();
@@ -285,9 +328,9 @@ export default function CascosPage() {
                 <IconInventory style={{ color: '#16a34a', opacity: 0.8 }} />
               </div>
               <div className={styles.statValue} style={{ color: '#16a34a' }}>
-                {totalResueltos}
+                {cascosEnBodega}
               </div>
-              <div className={styles.statHint}>Baterías viejas recibidas</div>
+              <div className={styles.statHint}>Cascos usados en inventario</div>
             </div>
 
             <div className={styles.statCard}>
@@ -321,6 +364,14 @@ export default function CascosPage() {
             >
               <IconInventory />
               <span>Cascos Recibidos por Modelo ({resumenPorModelo.length})</span>
+            </button>
+            <button
+              type="button"
+              className={`${styles.mainTab} ${pestañaPrincipal === 'bodega' ? styles.mainTabActive : ''}`}
+              onClick={() => setPestañaPrincipal('bodega')}
+            >
+              <IconInventory />
+              <span>Bodega por grupo ({cascosEnBodega})</span>
             </button>
             <button
               type="button"
@@ -544,6 +595,172 @@ export default function CascosPage() {
           )}
 
           {/* ==================================================================== */}
+          {/* VISTA: BODEGA POR GRUPO (alta, baja a proveedor, clasificación)      */}
+          {/* ==================================================================== */}
+          {pestañaPrincipal === 'bodega' && (
+            <section className={styles.bentoCard}>
+              <div className={styles.cardHeader}>
+                <h2 className={styles.cardTitle}>
+                  <IconInventory style={{ color: 'var(--primary)' }} />
+                  <span>Cascos en bodega por grupo</span>
+                </h2>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimarySm}
+                    onClick={() => setAjusteBodega({
+                      tipo: 'alta',
+                      productoId: '',
+                      sucursalId: sucursalBodega || sucursales[0]?.id || '',
+                    })}
+                  >
+                    <IconPlus />
+                    <span>Dar de alta</span>
+                  </button>
+                  <button type="button" className={styles.btnSecondary} onClick={cargar} disabled={cargando}>
+                    <IconRefresh />
+                    <span>Actualizar</span>
+                  </button>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                El grupo sale de la hoja del proveedor. Dar de alta suma un casco comprado.
+                Entregar al proveedor lo resta de esa sucursal. El intercambio con un cliente sigue en su pestaña.
+              </p>
+
+              <label className={styles.field} style={{ maxWidth: '280px', marginBottom: '14px' }}>
+                <span className={styles.fieldLabel}>Sucursal</span>
+                <select
+                  className={styles.select}
+                  value={sucursalBodega}
+                  onChange={(e) => setSucursalBodega(e.target.value)}
+                >
+                  <option value="">Todas las sucursales</option>
+                  {sucursales.map((s) => (
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div className={styles.statsGrid}>
+                {resumenGrupos.map((grupo) => (
+                  <div key={grupo.id} className={styles.statCard}>
+                    <div className={styles.statHeader}>
+                      <span className={styles.statLabel}>{grupo.nombre}</span>
+                    </div>
+                    <div className={styles.statValue} style={{ fontSize: '22px' }}>{grupo.cantidad}</div>
+                    <div className={styles.statHint}>
+                      {grupo.precio > 0
+                        ? `${formatearDinero(grupo.precio)} c/u · ${formatearDinero(grupo.valor)}`
+                        : 'Modelo fuera de la hoja'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className={styles.tableScroll}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Grupo</th>
+                      <th>Batería</th>
+                      <th>Sucursal</th>
+                      <th style={{ textAlign: 'center' }}>En bodega</th>
+                      <th style={{ textAlign: 'right' }}>Valor proveedor</th>
+                      <th style={{ textAlign: 'center' }}>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasBodega.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className={styles.emptyText}>
+                          No hay cascos en bodega{sucursalBodega ? ' en esta sucursal' : ''}.
+                        </td>
+                      </tr>
+                    ) : filasBodega.map((fila) => (
+                      <tr key={`${fila.sucursal_id}-${fila.producto_id}`}>
+                        <td>
+                          <div style={{ fontWeight: 700 }}>{fila.grupo.nombre}</div>
+                          {fila.grupo.id !== 'sin-grupo' && (
+                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              {formatearDinero(fila.grupo.precio)}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>
+                            {fila.marca ? `${fila.marca} ` : ''}{fila.modelo}
+                          </div>
+                        </td>
+                        <td>{fila.sucursal}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 800 }} className="mono">
+                          {fila.cascos_disponibles}
+                        </td>
+                        <td style={{ textAlign: 'right' }} className="mono">
+                          {formatearDinero(fila.cascos_disponibles * fila.grupo.precio)}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className={styles.btnPriceAction}
+                            onClick={() => setAjusteBodega({
+                              tipo: 'baja_proveedor',
+                              productoId: fila.producto_id ?? '',
+                              sucursalId: fila.sucursal_id,
+                            })}
+                          >
+                            Entregar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {movimientos.length > 0 && (
+                <div style={{ marginTop: '18px' }}>
+                  <h3 style={{ fontSize: '14px', margin: '0 0 8px' }}>Últimos movimientos</h3>
+                  <div className={styles.tableScroll}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Movimiento</th>
+                          <th>Batería</th>
+                          <th>Sucursal</th>
+                          <th style={{ textAlign: 'center' }}>Cantidad</th>
+                          <th>Nota</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {movimientos.slice(0, 12).map((m) => (
+                          <tr key={m.id}>
+                            <td style={{ fontSize: '12px' }}>
+                              {new Date(m.created_at).toLocaleString('es-MX', {
+                                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                              })}
+                            </td>
+                            <td>{m.tipo === 'alta' ? 'Alta' : 'Entrega a proveedor'}</td>
+                            <td>
+                              {m.productos?.marcas?.nombre ? `${m.productos.marcas.nombre} ` : ''}
+                              {m.productos?.modelo ?? '—'}
+                            </td>
+                            <td>{m.sucursales?.nombre ?? '—'}</td>
+                            <td style={{ textAlign: 'center' }} className="mono">{m.cantidad}</td>
+                            <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{m.nota ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ==================================================================== */}
           {/* VISTA 3: INTERCAMBIO DE CASCOS (TRUEQUES)                            */}
           {/* ==================================================================== */}
           {pestañaPrincipal === 'intercambios' && (
@@ -688,6 +905,22 @@ export default function CascosPage() {
       {/* ==================================================================== */}
       {/* MODALES UNIFICADOS                                                   */}
       {/* ==================================================================== */}
+
+      {ajusteBodega && (
+        <ModalAjusteBodega
+          tipoInicial={ajusteBodega.tipo}
+          productoInicial={ajusteBodega.productoId}
+          sucursalInicial={ajusteBodega.sucursalId}
+          sucursales={sucursales}
+          productos={productos}
+          inventario={inventario}
+          onCerrar={() => setAjusteBodega(null)}
+          onExito={() => {
+            setAjusteBodega(null);
+            void cargar();
+          }}
+        />
+      )}
 
       {/* Modal Devolver Casco Pendiente */}
       {cascoAResolver && (
@@ -1373,6 +1606,182 @@ function ModalDetalleIntercambio({
           </button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+function ModalAjusteBodega({
+  tipoInicial,
+  productoInicial,
+  sucursalInicial,
+  sucursales,
+  productos,
+  inventario,
+  onCerrar,
+  onExito,
+}: {
+  tipoInicial: 'alta' | 'baja_proveedor';
+  productoInicial: string;
+  sucursalInicial: string;
+  sucursales: Sucursal[];
+  productos: Producto[];
+  inventario: ItemInventario[];
+  onCerrar: () => void;
+  onExito: () => void;
+}) {
+  const [tipo, setTipo] = useState(tipoInicial);
+  const [sucursalId, setSucursalId] = useState(sucursalInicial || sucursales[0]?.id || '');
+  const [productoId, setProductoId] = useState(productoInicial);
+  const [busqueda, setBusqueda] = useState('');
+  const [cantidad, setCantidad] = useState('1');
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const baterias = useMemo(
+    () => productos.filter((p) => p.requiere_casco && p.activo),
+    [productos],
+  );
+  const coincidencias = baterias.filter((p) => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return false;
+    const texto = `${p.marcas?.nombre ?? ''} ${p.modelo}`.toLowerCase();
+    return q.split(/\s+/).every((t) => texto.includes(t));
+  });
+  const producto = baterias.find((p) => p.id === productoId);
+  const grupo = grupoDeModelo(producto?.modelo);
+  const stock = inventario.find(
+    (i) => i.producto_id === productoId && i.sucursal_id === sucursalId,
+  )?.cascos_disponibles ?? 0;
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    const cantNum = Number(cantidad);
+    if (!sucursalId || !productoId) {
+      setError('Elige sucursal y batería.');
+      return;
+    }
+    if (!Number.isInteger(cantNum) || cantNum < 1) {
+      setError('La cantidad debe ser un entero mayor a cero.');
+      return;
+    }
+    if (tipo === 'baja_proveedor' && cantNum > stock) {
+      setError(`En esa sucursal solo hay ${stock} cascos de ese modelo.`);
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await ajustarCascoBodega({
+        producto_id: productoId,
+        sucursal_id: sucursalId,
+        cantidad: cantNum,
+        tipo,
+        nota: nota.trim() || undefined,
+      });
+      onExito();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal
+      titulo={tipo === 'alta' ? 'Dar de alta cascos' : 'Entregar cascos al proveedor'}
+      icono={<IconInventory />}
+      onCerrar={onCerrar}
+    >
+      <form className={styles.form} onSubmit={guardar}>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Movimiento</span>
+          <select
+            className={styles.select}
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value as 'alta' | 'baja_proveedor')}
+          >
+            <option value="alta">Alta — se compró un casco</option>
+            <option value="baja_proveedor">Baja — se entregó al proveedor</option>
+          </select>
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Sucursal</span>
+          <select
+            className={styles.select}
+            value={sucursalId}
+            onChange={(e) => setSucursalId(e.target.value)}
+          >
+            {sucursales.map((s) => (
+              <option key={s.id} value={s.id}>{s.nombre}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Buscar batería (marca y modelo)</span>
+          <input
+            className={styles.input}
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Ej. GONHER 24 R"
+          />
+        </label>
+        {busqueda.trim() && (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, maxHeight: '140px', overflowY: 'auto' }}>
+            {coincidencias.slice(0, 8).map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  style={{ width: '100%', marginBottom: '4px', justifyContent: 'space-between' }}
+                  onClick={() => {
+                    setProductoId(p.id);
+                    setBusqueda(`${p.marcas?.nombre ?? ''} ${p.modelo}`.trim());
+                  }}
+                >
+                  <span>{p.marcas?.nombre} {p.modelo}</span>
+                  <span>{grupoDeModelo(p.modelo).nombre}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {producto && (
+          <p style={{ fontSize: '12px', margin: 0 }}>
+            {producto.marcas?.nombre} {producto.modelo} · {grupo.nombre}
+            {grupo.precio > 0 ? ` · ${formatearDinero(grupo.precio)}` : ''}
+            {' '}· en bodega: <strong>{stock}</strong>
+          </p>
+        )}
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Cantidad</span>
+          <input
+            className={styles.input}
+            inputMode="numeric"
+            value={cantidad}
+            onChange={(e) => setCantidad(e.target.value)}
+          />
+        </label>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nota (proveedor o folio, opcional)</span>
+          <input
+            className={styles.input}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej. Entrega a LTH, 27 sep"
+          />
+        </label>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>Cancelar</button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando || !productoId}>
+            {guardando ? 'Guardando…' : tipo === 'alta' ? 'Registrar alta' : 'Registrar entrega'}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

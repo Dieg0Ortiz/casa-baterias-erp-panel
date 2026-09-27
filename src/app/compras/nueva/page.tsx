@@ -8,6 +8,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useSesion, logout } from '@/lib/auth';
 import { CompraItemInput, Proveedor, listarProveedores, registrarCompra } from '@/lib/purchases';
 import { Producto, Sucursal, formatearDinero, listarProductos, listarSucursales } from '@/lib/catalogo';
+import { GRUPOS_CASCOS, type GrupoCasco } from '@/lib/grupos-cascos';
 import { ApiError } from '@/lib/api';
 import {
   IconBolt,
@@ -37,54 +38,6 @@ interface ItemCarrito {
   cantidad: number;
   precio_unitario: number;
 }
-
-/** Grupos de cascos con sus baterías y precio de compra (Villaflores). */
-const GRUPOS_CASCOS = [
-  {
-    id: 'grupo-1',
-    nombre: 'Grupo 1 — Chico',
-    baterias: ['99', '40ENL', '151R', '44B19'],
-    precio: 120,
-  },
-  {
-    id: 'grupo-2',
-    nombre: 'Grupo 2 — Intermedio',
-    baterias: ['22F', '26R', '42', '42R', '51R', '58', '58R'],
-    precio: 165,
-  },
-  {
-    id: 'grupo-3',
-    nombre: 'Grupo 3 — Mediano',
-    baterias: ['24', '24R', '34', '35', '41', '47', '48', '75', '75/86', '34/78'],
-    precio: 240,
-  },
-  {
-    id: 'grupo-4',
-    nombre: 'Grupo 4 — Intergrande',
-    baterias: ['27', '49', '65', '94R'],
-    precio: 275,
-  },
-  {
-    id: 'grupo-5',
-    nombre: 'Grupo 5 — Grande',
-    baterias: ['31T', '31P', '31RP'],
-    precio: 350,
-  },
-  {
-    id: 'grupo-6',
-    nombre: 'Grupo 6 — Extra Grande',
-    baterias: ['4DLT'],
-    precio: 555,
-  },
-  {
-    id: 'grupo-7',
-    nombre: 'Grupo 7 — Jumbo',
-    baterias: ['8D'],
-    precio: 705,
-  },
-] as const;
-
-type GrupoCasco = (typeof GRUPOS_CASCOS)[number];
 
 export default function NuevaCompraPage() {
   const router = useRouter();

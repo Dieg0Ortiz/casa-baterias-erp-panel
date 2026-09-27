@@ -302,6 +302,36 @@ export function listarIntercambiosCascos() {
   return api<IntercambioCasco[]>('/cascos/intercambios');
 }
 
+export interface MovimientoCasco {
+  id: string;
+  sucursal_id: string;
+  producto_id: string;
+  tipo: 'alta' | 'baja_proveedor';
+  cantidad: number;
+  nota: string | null;
+  created_at: string;
+  sucursales?: { nombre: string } | null;
+  productos?: { modelo: string; marcas?: { nombre: string } | null } | null;
+  usuarios?: { nombre_completo: string } | null;
+}
+
+export function listarMovimientosCascos() {
+  return api<MovimientoCasco[]>('/cascos/bodega/movimientos');
+}
+
+export function ajustarCascoBodega(input: {
+  producto_id: string;
+  sucursal_id: string;
+  cantidad: number;
+  tipo: 'alta' | 'baja_proveedor';
+  nota?: string;
+}) {
+  return api<unknown>('/cascos/bodega', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function registrarIntercambioCasco(input: RegistrarIntercambioInput) {
   return api<any>('/cascos/intercambios', {
     method: 'POST',
