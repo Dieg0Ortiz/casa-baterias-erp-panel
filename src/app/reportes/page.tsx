@@ -473,7 +473,8 @@ function ReportesAdmin() {
                             desglosePago={venta.desglose_pago}
                             total={venta.total}
                             items={venta.items.map((item) => ({
-                              producto: item.producto,
+                              producto: item.modelo || item.producto,
+                              marca: item.marca,
                               cantidad: item.cantidad,
                               precio: item.precio_unitario,
                               tipoPrecio: item.tipo_precio,
@@ -520,6 +521,7 @@ function VentaFila({
   total: number;
   items: {
     producto: string | null;
+    marca?: string | null;
     cantidad: number;
     precio: number;
     tipoPrecio?: string | null;
@@ -685,6 +687,7 @@ function VentaFila({
               <thead>
                 <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--outline-variant)' }}>
                   <th style={{ textAlign: 'left', padding: '4px 0' }}>Producto / Batería</th>
+                  <th style={{ textAlign: 'left', padding: '4px 8px' }}>Marca</th>
                   <th style={{ textAlign: 'center', padding: '4px 0' }}>Opción de Precio</th>
                   <th style={{ textAlign: 'center', padding: '4px 0' }}>Casco / Garantía</th>
                   <th style={{ textAlign: 'center', padding: '4px 0' }}>Cantidad</th>
@@ -699,6 +702,7 @@ function VentaFila({
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
                       <td style={{ padding: '6px 0', fontWeight: 600 }}>{it.producto ?? 'Sin nombre'}</td>
+                      <td style={{ padding: '6px 8px', fontWeight: 600 }}>{it.marca?.trim() || '—'}</td>
                       <td style={{ textAlign: 'center', padding: '6px 0' }}>
                         <span
                           style={{

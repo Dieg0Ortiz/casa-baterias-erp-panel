@@ -58,6 +58,8 @@ export interface Dashboard {
 
 export interface ItemVentaReporte {
   producto: string | null;
+  marca?: string | null;
+  modelo?: string | null;
   cantidad: number;
   precio_unitario: number;
   tipo_precio?: string | null;
