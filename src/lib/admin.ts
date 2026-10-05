@@ -319,6 +319,17 @@ export function listarMovimientosCascos() {
   return api<MovimientoCasco[]>('/cascos/bodega/movimientos');
 }
 
+export function bajarCascosGrupo(input: {
+  sucursal_id: string;
+  items: { producto_id: string; cantidad: number }[];
+  nota?: string;
+}) {
+  return api<{ piezas: number }>('/cascos/bodega/grupo', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function ajustarCascoBodega(input: {
   producto_id: string;
   sucursal_id: string;

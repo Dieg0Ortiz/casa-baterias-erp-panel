@@ -10,6 +10,7 @@ import {
   type IntercambioCasco,
   type MovimientoCasco,
   ajustarCascoBodega,
+  bajarCascosGrupo,
   listarCascosPendientes,
   listarIntercambiosCascos,
   listarMovimientosCascos,
@@ -66,6 +67,7 @@ export default function CascosPage() {
     productoId: string;
     sucursalId: string;
   } | null>(null);
+  const [bajaGrupo, setBajaGrupo] = useState<string | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'resuelto' | 'vencido'>('todos');
   const [busqueda, setBusqueda] = useState('');
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -625,8 +627,8 @@ export default function CascosPage() {
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                El grupo sale de la hoja del proveedor. Dar de alta suma un casco comprado.
-                Entregar al proveedor lo resta de esa sucursal. El intercambio con un cliente sigue en su pestaña.
+                Elige la sucursal y da de baja el grupo completo desde la tarjeta.
+                La entrega por modelo sigue abajo, por si solo se lleva una parte.
               </p>
 
               <label className={styles.field} style={{ maxWidth: '280px', marginBottom: '14px' }}>
@@ -655,6 +657,20 @@ export default function CascosPage() {
                         ? `${formatearDinero(grupo.precio)} c/u · ${formatearDinero(grupo.valor)}`
                         : 'Modelo fuera de la hoja'}
                     </div>
+                    <button
+                      type="button"
+                      className={styles.btnPriceAction}
+                      style={{ marginTop: '10px' }}
+                      disabled={grupo.cantidad === 0 || !sucursalBodega}
+                      title={
+                        !sucursalBodega
+                          ? 'Selecciona una sucursal para dar de baja el grupo'
+                          : `Dar de baja las ${grupo.cantidad} piezas`
+                      }
+                      onClick={() => setBajaGrupo(grupo.id)}
+                    >
+                      Dar de baja
+                    </button>
                   </div>
                 ))}
               </div>
@@ -905,6 +921,20 @@ export default function CascosPage() {
       {/* ==================================================================== */}
       {/* MODALES UNIFICADOS                                                   */}
       {/* ==================================================================== */}
+
+      {bajaGrupo && (
+        <ModalBajaGrupo
+          grupoId={bajaGrupo}
+          sucursalId={sucursalBodega}
+          sucursales={sucursales}
+          filas={filasBodega.filter((fila) => fila.grupo.id === bajaGrupo)}
+          onCerrar={() => setBajaGrupo(null)}
+          onExito={() => {
+            setBajaGrupo(null);
+            void cargar();
+          }}
+        />
+      )}
 
       {ajusteBodega && (
         <ModalAjusteBodega
@@ -1779,6 +1809,102 @@ function ModalAjusteBodega({
           <button type="button" className={styles.btnSecondary} onClick={onCerrar}>Cancelar</button>
           <button type="submit" className={styles.btnPrimarySm} disabled={guardando || !productoId}>
             {guardando ? 'Guardando…' : tipo === 'alta' ? 'Registrar alta' : 'Registrar entrega'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function ModalBajaGrupo({
+  grupoId,
+  sucursalId,
+  sucursales,
+  filas,
+  onCerrar,
+  onExito,
+}: {
+  grupoId: string;
+  sucursalId: string;
+  sucursales: Sucursal[];
+  filas: Array<{
+    producto_id: string | null;
+    modelo: string | null;
+    marca: string | null;
+    cascos_disponibles: number;
+    grupo: { id: string; nombre: string; precio: number };
+  }>;
+  onCerrar: () => void;
+  onExito: () => void;
+}) {
+  const [nota, setNota] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre ?? 'la sucursal';
+  const nombreGrupo = filas[0]?.grupo.nombre ?? grupoId;
+  const piezas = filas.reduce((suma, fila) => suma + fila.cascos_disponibles, 0);
+  const valor = filas.reduce(
+    (suma, fila) => suma + fila.cascos_disponibles * fila.grupo.precio,
+    0,
+  );
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    const items = filas
+      .filter((fila) => fila.producto_id && fila.cascos_disponibles > 0)
+      .map((fila) => ({
+        producto_id: fila.producto_id as string,
+        cantidad: fila.cascos_disponibles,
+      }));
+    if (!sucursalId || items.length === 0) {
+      setError('No hay piezas de este grupo en la sucursal.');
+      return;
+    }
+
+    setGuardando(true);
+    setError(null);
+    try {
+      await bajarCascosGrupo({
+        sucursal_id: sucursalId,
+        items,
+        nota: nota.trim() || undefined,
+      });
+      onExito();
+    } catch (err) {
+      setError(mensajeError(err));
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Modal titulo={`Baja de ${nombreGrupo}`} icono={<IconInventory />} onCerrar={onCerrar}>
+      <form className={styles.form} onSubmit={guardar}>
+        <p style={{ fontSize: '14px', margin: 0 }}>
+          Se dan de baja <strong>{piezas}</strong> cascos de {nombreGrupo} en {nombreSucursal}
+          {valor > 0 ? `, por ${formatearDinero(valor)}` : ''}.
+        </p>
+        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
+          {filas.map((fila) => (
+            <li key={fila.producto_id ?? fila.modelo}>
+              {fila.marca ? `${fila.marca} ` : ''}{fila.modelo}: {fila.cascos_disponibles}
+            </li>
+          ))}
+        </ul>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Nota (proveedor o folio, opcional)</span>
+          <input
+            className={styles.input}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej. Entrega a LTH, 5 oct"
+          />
+        </label>
+        {error && <p className={styles.errorBanner}>{error}</p>}
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.btnSecondary} onClick={onCerrar}>Cancelar</button>
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando || piezas === 0}>
+            {guardando ? 'Aplicando…' : `Dar de baja ${piezas} piezas`}
           </button>
         </div>
       </form>
