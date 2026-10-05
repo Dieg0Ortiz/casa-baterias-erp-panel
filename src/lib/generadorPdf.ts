@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { type ReporteVentas } from './admin';
+import { etiquetaOrigenAlta, type ReporteAltas, type ReporteVentas } from './admin';
 
 export interface ParametrosReportePdf {
   reporte: ReporteVentas;
@@ -329,4 +329,114 @@ export function generarReporteVentasPdf({
   // Guardar archivo PDF con nombre legible
   const nombreArchivo = `Reporte-Ventas-CasaBaterias-${fechaHasta || 'actual'}.pdf`;
   doc.save(nombreArchivo);
+}
+
+export function generarReporteAltasPdf({
+  reporte,
+  sucursalNombre,
+  productoNombre,
+  origenNombre,
+  fechaDesde,
+  fechaHasta,
+}: {
+  reporte: ReporteAltas;
+  sucursalNombre?: string;
+  productoNombre?: string;
+  origenNombre?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginLeft = 10;
+  const marginRight = 10;
+
+  doc.setFillColor(62, 50, 211);
+  doc.rect(0, 0, pageWidth, 5, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(25, 28, 30);
+  doc.text('CASA BATERÍAS', marginLeft, 14);
+
+  doc.setFontSize(11);
+  doc.text('Acuse de altas de inventario', marginLeft, 21);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(80, 85, 95);
+  const filtros = [
+    sucursalNombre ? `Sucursal: ${sucursalNombre}` : 'Sucursal: todas',
+    productoNombre ? `Producto: ${productoNombre}` : 'Producto: todos',
+    origenNombre ? `Tipo: ${origenNombre}` : 'Tipo: todos',
+    `Del ${fechaDesde || 'inicio'} al ${fechaHasta || 'hoy'}`,
+    `${reporte.totales.operaciones} acuses · ${reporte.totales.unidades} unidades`,
+  ].join('   |   ');
+  doc.text(filtros, marginLeft, 27);
+
+  autoTable(doc, {
+    startY: 32,
+    head: [[
+      'Folio',
+      'Fecha',
+      'Sucursal',
+      'Registró',
+      'Tipo',
+      'Marca',
+      'Modelo',
+      'Código',
+      'Cant.',
+      'Antes',
+      'Después',
+      'Nota',
+    ]],
+    body: reporte.lineas.map((linea) => [
+      linea.folio,
+      formatearFechaHora(linea.created_at),
+      linea.sucursal ?? '—',
+      linea.usuario ?? '—',
+      etiquetaOrigenAlta(linea.origen, linea.modo),
+      linea.marca ?? '—',
+      linea.modelo ?? '—',
+      linea.codigo_barras ?? '—',
+      String(linea.cantidad),
+      linea.existencia_anterior == null ? '—' : String(linea.existencia_anterior),
+      linea.existencia_nueva == null ? '—' : String(linea.existencia_nueva),
+      linea.nota ?? '',
+    ]),
+    theme: 'grid',
+    headStyles: {
+      fillColor: [62, 50, 211],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7,
+      cellPadding: 1.6,
+    },
+    styles: {
+      fontSize: 7,
+      cellPadding: 1.4,
+      overflow: 'linebreak',
+      textColor: [30, 35, 45],
+      lineColor: [230, 233, 242],
+      lineWidth: 0.2,
+    },
+    alternateRowStyles: { fillColor: [249, 250, 253] },
+    margin: { left: marginLeft, right: marginRight, bottom: 14 },
+    didDrawPage: (data) => {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(140, 145, 160);
+      doc.text(
+        'Acuse de control interno — Casa Baterías ERP',
+        marginLeft,
+        pageHeight - 6,
+      );
+      doc.text(`Página ${data.pageNumber}`, pageWidth - marginRight, pageHeight - 6, {
+        align: 'right',
+      });
+    },
+  });
+
+  doc.save(`Acuse-Altas-CasaBaterias-${fechaHasta || 'actual'}.pdf`);
 }

@@ -345,6 +345,41 @@
   box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.2);
 }
 
+.vistaTabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.vistaTab,
+.vistaTabActiva {
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.vistaTab {
+  background: var(--surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--outline-variant);
+}
+
+.vistaTabActiva {
+  background: var(--primary);
+  color: var(--on-primary);
+  border: 1px solid var(--primary);
+}
+
+.acuseNota {
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .filterActionsBar {
   display: flex;
   align-items: center;

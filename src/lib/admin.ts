@@ -195,6 +195,55 @@ export function obtenerReporteVentas(filtros: FiltrosReporte) {
   return api<ReporteVentas>(`/admin/reportes/ventas${q ? `?${q}` : ''}`);
 }
 
+export type OrigenAlta = 'entrada' | 'carga_masiva' | 'compra' | 'catalogo';
+
+export interface LineaAlta {
+  folio: string;
+  origen: OrigenAlta;
+  modo: 'sumar' | 'reemplazar';
+  cantidad: number;
+  existencia_anterior: number | null;
+  existencia_nueva: number | null;
+  nota: string | null;
+  referencia: string | null;
+  created_at: string;
+  sucursal: string | null;
+  usuario: string | null;
+  marca: string | null;
+  modelo: string | null;
+  codigo_barras: string | null;
+}
+
+export interface ReporteAltas {
+  lineas: LineaAlta[];
+  totales: { operaciones: number; lineas: number; unidades: number };
+}
+
+export function etiquetaOrigenAlta(origen: string, modo: string): string {
+  if (origen === 'catalogo') return 'Alta de modelo';
+  if (origen === 'compra') return 'Compra';
+  if (origen === 'carga_masiva' && modo === 'reemplazar') return 'Conteo';
+  if (origen === 'carga_masiva') return 'Carga masiva';
+  return 'Entrada de inventario';
+}
+
+export function obtenerReporteAltas(filtros: {
+  sucursal_id?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  producto_id?: string;
+  origen?: OrigenAlta | '';
+}) {
+  const params = new URLSearchParams();
+  if (filtros.sucursal_id) params.set('sucursal_id', filtros.sucursal_id);
+  if (filtros.fecha_desde) params.set('fecha_desde', filtros.fecha_desde);
+  if (filtros.fecha_hasta) params.set('fecha_hasta', filtros.fecha_hasta);
+  if (filtros.producto_id) params.set('producto_id', filtros.producto_id);
+  if (filtros.origen) params.set('origen', filtros.origen);
+  const q = params.toString();
+  return api<ReporteAltas>(`/admin/reportes/altas${q ? `?${q}` : ''}`);
+}
+
 export interface UtilidadReporte {
   totalVentas: number;
   totalCosto: number;

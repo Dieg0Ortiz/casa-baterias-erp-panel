@@ -903,6 +903,12 @@ function CargaMasivaModal({
             </strong>{' '}
             productos de {nombreSucursal}.
           </p>
+          {resultado.folio && (
+            <p style={{ fontSize: '13px', margin: 0 }}>
+              Acuse <strong className="mono">{resultado.folio}</strong>. Queda en
+              Reportes → Altas de inventario para descargarlo.
+            </p>
+          )}
 
           {resultado.no_encontrados.length > 0 && (
             <div>

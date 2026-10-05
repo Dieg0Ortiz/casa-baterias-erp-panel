@@ -89,6 +89,7 @@ export interface CargaMasivaResultado {
   modo: string;
   aplicados: number;
   unidades: number;
+  folio?: string | null;
   no_encontrados: string[];
 }
 

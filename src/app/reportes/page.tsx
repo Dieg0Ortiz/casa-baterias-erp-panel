@@ -23,6 +23,7 @@ import {
   listarSucursales,
 } from '@/lib/catalogo';
 import { generarReporteVentasPdf } from '@/lib/generadorPdf';
+import { ReporteAltas } from './ReporteAltas';
 import {
   IconBolt,
   IconDashboard,
@@ -102,6 +103,7 @@ function ReportesAdmin() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [vista, setVista] = useState<'ventas' | 'altas'>('ventas');
 
   const tieneFiltrosActivos = Boolean(
     sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte || reporteUtilidad,
@@ -214,6 +216,23 @@ function ReportesAdmin() {
         </header>
 
         <main className={styles.mainContent}>
+          <div className={styles.vistaTabs}>
+            <button
+              type="button"
+              className={vista === 'ventas' ? styles.vistaTabActiva : styles.vistaTab}
+              onClick={() => setVista('ventas')}
+            >
+              Ventas
+            </button>
+            <button
+              type="button"
+              className={vista === 'altas' ? styles.vistaTabActiva : styles.vistaTab}
+              onClick={() => setVista('altas')}
+            >
+              Altas de inventario
+            </button>
+          </div>
+          {vista === 'altas' ? <ReporteAltas /> : <>
           <section className={styles.filterCard}>
             <div className={styles.filterHeader}>
               <h2 className={styles.filterTitle}>Filtros de Búsqueda</h2>
@@ -496,6 +515,7 @@ function ReportesAdmin() {
               Selecciona los filtros y haz clic en «Consultar Reporte» para generar la auditoría.
             </div>
           )}
+          </>}
         </main>
       </div>
     </div>
