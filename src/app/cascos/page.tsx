@@ -627,8 +627,8 @@ export default function CascosPage() {
               </div>
 
               <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                Elige la sucursal y da de baja el grupo completo desde la tarjeta.
-                La entrega por modelo sigue abajo, por si solo se lleva una parte.
+                Elige la sucursal y, en la tarjeta del grupo, indica cuántas piezas dar de baja.
+                Puede ser el grupo completo o solo una parte, por ejemplo 6 de 8.
               </p>
 
               <label className={styles.field} style={{ maxWidth: '280px', marginBottom: '14px' }}>
@@ -665,7 +665,7 @@ export default function CascosPage() {
                       title={
                         !sucursalBodega
                           ? 'Selecciona una sucursal para dar de baja el grupo'
-                          : `Dar de baja las ${grupo.cantidad} piezas`
+                          : `Elegir cuántas de las ${grupo.cantidad} piezas dar de baja`
                       }
                       onClick={() => setBajaGrupo(grupo.id)}
                     >
@@ -1816,6 +1816,24 @@ function ModalAjusteBodega({
   );
 }
 
+function repartirBaja(
+  filas: Array<{ producto_id: string | null; modelo: string | null; cascos_disponibles: number }>,
+  piezas: number,
+): Record<string, number> {
+  let restante = Math.max(0, piezas);
+  const orden = [...filas].sort((a, b) =>
+    (a.modelo ?? '').localeCompare(b.modelo ?? '', 'es'),
+  );
+  const cantidades: Record<string, number> = {};
+  for (const fila of orden) {
+    const id = fila.producto_id ?? '';
+    const tomar = Math.min(fila.cascos_disponibles, restante);
+    cantidades[id] = tomar;
+    restante -= tomar;
+  }
+  return cantidades;
+}
+
 function ModalBajaGrupo({
   grupoId,
   sucursalId,
@@ -1837,25 +1855,60 @@ function ModalBajaGrupo({
   onCerrar: () => void;
   onExito: () => void;
 }) {
+  const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre ?? 'la sucursal';
+  const nombreGrupo = filas[0]?.grupo.nombre ?? grupoId;
+  const disponibles = filas.reduce((suma, fila) => suma + fila.cascos_disponibles, 0);
+  const [objetivo, setObjetivo] = useState(String(disponibles));
+  const [cantidades, setCantidades] = useState<Record<string, number>>(() =>
+    repartirBaja(filas, disponibles),
+  );
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre ?? 'la sucursal';
-  const nombreGrupo = filas[0]?.grupo.nombre ?? grupoId;
-  const piezas = filas.reduce((suma, fila) => suma + fila.cascos_disponibles, 0);
+  const piezas = Object.values(cantidades).reduce((suma, n) => suma + n, 0);
   const valor = filas.reduce(
-    (suma, fila) => suma + fila.cascos_disponibles * fila.grupo.precio,
+    (suma, fila) => suma + (cantidades[fila.producto_id ?? ''] ?? 0) * fila.grupo.precio,
     0,
   );
+  const objetivoNum = Number(objetivo);
+  const objetivoInvalido =
+    objetivo.trim() === '' || !Number.isInteger(objetivoNum) || objetivoNum < 1 || objetivoNum > disponibles;
+
+  function cambiarObjetivo(valor: string) {
+    setError(null);
+    if (valor === '') {
+      setObjetivo('');
+      setCantidades(repartirBaja(filas, 0));
+      return;
+    }
+    const n = Number(valor);
+    if (!Number.isInteger(n) || n < 0) return;
+    const tope = Math.min(n, disponibles);
+    setObjetivo(String(tope));
+    setCantidades(repartirBaja(filas, tope));
+  }
+
+  function cambiarLinea(id: string, valor: string, maximo: number) {
+    const n = Number(valor);
+    const cantidad = Number.isInteger(n) ? Math.min(Math.max(n, 0), maximo) : 0;
+    const next = { ...cantidades, [id]: cantidad };
+    setCantidades(next);
+    setObjetivo(String(Object.values(next).reduce((suma, item) => suma + item, 0)));
+    setError(null);
+  }
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
+    if (objetivoInvalido || piezas < 1 || piezas > disponibles) {
+      setError(`Indica entre 1 y ${disponibles} piezas.`);
+      return;
+    }
     const items = filas
-      .filter((fila) => fila.producto_id && fila.cascos_disponibles > 0)
+      .filter((fila) => fila.producto_id && (cantidades[fila.producto_id] ?? 0) > 0)
       .map((fila) => ({
         producto_id: fila.producto_id as string,
-        cantidad: fila.cascos_disponibles,
+        cantidad: cantidades[fila.producto_id as string],
       }));
     if (!sucursalId || items.length === 0) {
       setError('No hay piezas de este grupo en la sucursal.');
@@ -1881,16 +1934,47 @@ function ModalBajaGrupo({
     <Modal titulo={`Baja de ${nombreGrupo}`} icono={<IconInventory />} onCerrar={onCerrar}>
       <form className={styles.form} onSubmit={guardar}>
         <p style={{ fontSize: '14px', margin: 0 }}>
-          Se dan de baja <strong>{piezas}</strong> cascos de {nombreGrupo} en {nombreSucursal}
-          {valor > 0 ? `, por ${formatearDinero(valor)}` : ''}.
+          En {nombreSucursal} hay <strong>{disponibles}</strong> cascos de {nombreGrupo}.
+          Puedes dar de baja solo una parte; el resto se queda en bodega.
         </p>
-        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px' }}>
-          {filas.map((fila) => (
-            <li key={fila.producto_id ?? fila.modelo}>
-              {fila.marca ? `${fila.marca} ` : ''}{fila.modelo}: {fila.cascos_disponibles}
-            </li>
-          ))}
-        </ul>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Piezas a dar de baja</span>
+          <input
+            className={styles.input}
+            inputMode="numeric"
+            value={objetivo}
+            onChange={(e) => cambiarObjetivo(e.target.value.replace(/[^\d]/g, ''))}
+            autoFocus
+          />
+          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            De 1 a {disponibles}. Con esta baja quedan {Math.max(disponibles - piezas, 0)} en bodega.
+          </span>
+        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {filas.map((fila) => {
+            const id = fila.producto_id ?? '';
+            return (
+              <label key={id || fila.modelo} className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  {fila.marca ? `${fila.marca} ` : ''}{fila.modelo} · hay {fila.cascos_disponibles}
+                </span>
+                <input
+                  className={styles.input}
+                  inputMode="numeric"
+                  value={String(cantidades[id] ?? 0)}
+                  onChange={(e) =>
+                    cambiarLinea(id, e.target.value.replace(/[^\d]/g, ''), fila.cascos_disponibles)
+                  }
+                />
+              </label>
+            );
+          })}
+        </div>
+        {valor > 0 && piezas > 0 && (
+          <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-secondary)' }}>
+            Valor de esta baja: <strong>{formatearDinero(valor)}</strong>
+          </p>
+        )}
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Nota (proveedor o folio, opcional)</span>
           <input
@@ -1903,8 +1987,8 @@ function ModalBajaGrupo({
         {error && <p className={styles.errorBanner}>{error}</p>}
         <div className={styles.modalFooter}>
           <button type="button" className={styles.btnSecondary} onClick={onCerrar}>Cancelar</button>
-          <button type="submit" className={styles.btnPrimarySm} disabled={guardando || piezas === 0}>
-            {guardando ? 'Aplicando…' : `Dar de baja ${piezas} piezas`}
+          <button type="submit" className={styles.btnPrimarySm} disabled={guardando || objetivoInvalido || piezas < 1}>
+            {guardando ? 'Aplicando…' : `Dar de baja ${piezas} de ${disponibles}`}
           </button>
         </div>
       </form>
