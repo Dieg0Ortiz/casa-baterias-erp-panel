@@ -244,6 +244,37 @@ export function obtenerReporteAltas(filtros: {
   return api<ReporteAltas>(`/admin/reportes/altas${q ? `?${q}` : ''}`);
 }
 
+export interface ReimpresionTicket {
+  id: string;
+  folio: string;
+  numero: number;
+  motivo: string;
+  created_at: string;
+  sucursal: string | null;
+  solicito: string | null;
+  autorizo: string | null;
+  total: number;
+  vendida_en: string | null;
+}
+
+export interface ReporteReimpresiones {
+  reimpresiones: ReimpresionTicket[];
+  totales: { reimpresiones: number };
+}
+
+export function obtenerReporteReimpresiones(filtros: {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  sucursal_id?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filtros.fecha_desde) params.set('fecha_desde', filtros.fecha_desde);
+  if (filtros.fecha_hasta) params.set('fecha_hasta', filtros.fecha_hasta);
+  if (filtros.sucursal_id) params.set('sucursal_id', filtros.sucursal_id);
+  const q = params.toString();
+  return api<ReporteReimpresiones>(`/admin/reportes/reimpresiones${q ? `?${q}` : ''}`);
+}
+
 export interface UtilidadReporte {
   totalVentas: number;
   totalCosto: number;

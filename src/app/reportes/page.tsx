@@ -24,6 +24,7 @@ import {
 } from '@/lib/catalogo';
 import { generarReporteVentasPdf } from '@/lib/generadorPdf';
 import { ReporteAltas } from './ReporteAltas';
+import { ReporteReimpresiones } from './ReporteReimpresiones';
 import {
   IconBolt,
   IconDashboard,
@@ -103,7 +104,7 @@ function ReportesAdmin() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [vista, setVista] = useState<'ventas' | 'altas'>('ventas');
+  const [vista, setVista] = useState<'ventas' | 'altas' | 'reimpresiones'>('ventas');
 
   const tieneFiltrosActivos = Boolean(
     sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte || reporteUtilidad,
@@ -231,8 +232,20 @@ function ReportesAdmin() {
             >
               Altas de inventario
             </button>
+            <button
+              type="button"
+              className={vista === 'reimpresiones' ? styles.vistaTabActiva : styles.vistaTab}
+              onClick={() => setVista('reimpresiones')}
+            >
+              Reimpresiones
+            </button>
           </div>
-          {vista === 'altas' ? <ReporteAltas /> : <>
+          {vista === 'altas' ? (
+            <ReporteAltas />
+          ) : vista === 'reimpresiones' ? (
+            <ReporteReimpresiones />
+          ) : (
+            <>
           <section className={styles.filterCard}>
             <div className={styles.filterHeader}>
               <h2 className={styles.filterTitle}>Filtros de Búsqueda</h2>
