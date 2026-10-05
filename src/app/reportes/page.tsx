@@ -174,7 +174,11 @@ function ReportesAdmin() {
       reporte,
       sucursalNombre: sucursalObj?.nombre,
       empleadoNombre: empleadoObj?.nombre_completo,
-      productoNombre: productoObj?.modelo,
+      productoNombre: productoObj
+        ? productoObj.marcas?.nombre
+          ? `${productoObj.marcas.nombre} ${productoObj.modelo}`
+          : productoObj.modelo
+        : undefined,
       fechaDesde,
       fechaHasta,
     });
@@ -258,7 +262,7 @@ function ReportesAdmin() {
                   <option value="">Todos los productos</option>
                   {productos.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.modelo}
+                      {p.marcas?.nombre ? `${p.marcas.nombre} ${p.modelo}` : p.modelo}
                     </option>
                   ))}
                 </select>
