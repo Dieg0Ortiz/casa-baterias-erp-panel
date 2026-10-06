@@ -48,43 +48,86 @@ interface AjustarState {
 }
 
 interface RenglonCarga {
-  codigo_barras: string;
+  linea: string;
+  referencia: string;
   cantidad: number;
+  matches: Producto[];
 }
 
-// Cada línea es "código cantidad". Si la cantidad se omite vale 1, para poder
-// escanear una pieza por línea; el servidor agrupa los códigos repetidos.
+function claveProducto(texto: string): string {
+  return texto.toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function etiquetaProducto(producto: Producto): string {
+  return `${producto.marcas?.nombre ?? ''} ${producto.modelo}`.trim();
+}
+
+function coincidenciasCarga(ref: string, catalogo: Producto[]): Producto[] {
+  const cruda = ref.trim();
+  const norm = claveProducto(cruda);
+  if (!norm) return [];
+  const exactos = catalogo.filter((p) => {
+    if (p.activo === false) return false;
+    if (p.codigo_barras === cruda) return true;
+    if (claveProducto(`${p.marcas?.nombre ?? ''}${p.modelo}`) === norm) return true;
+    if (claveProducto(p.modelo) === norm) return true;
+    return false;
+  });
+  if (exactos.length > 0) return exactos;
+
+  const marcas = new Map<string, string>();
+  for (const p of catalogo) {
+    const nombre = p.marcas?.nombre ?? '';
+    const n = claveProducto(nombre);
+    if (n) marcas.set(n, nombre);
+  }
+  const marca = [...marcas.entries()]
+    .filter(([n]) => norm.startsWith(n))
+    .sort((a, b) => b[0].length - a[0].length)[0];
+  if (!marca) return [];
+  const resto = norm.slice(marca[0].length);
+  if (!resto) return [];
+  return catalogo.filter((p) => {
+    if (p.activo === false) return false;
+    if (claveProducto(p.marcas?.nombre ?? '') !== marca[0]) return false;
+    return claveProducto(p.modelo).startsWith(resto);
+  });
+}
+
+function partirRenglon(linea: string, catalogo: Producto[]): RenglonCarga {
+  const cruda = linea.trim();
+  const directos = coincidenciasCarga(cruda, catalogo);
+  if (directos.length === 1) {
+    return { linea: cruda, referencia: cruda, cantidad: 1, matches: directos };
+  }
+  const conCantidad = cruda.match(/^(.*\S)\s+(\d+)$/);
+  if (conCantidad) {
+    const resto = conCantidad[1];
+    const cantidad = Number(conCantidad[2]);
+    const matches = coincidenciasCarga(resto, catalogo);
+    if (matches.length > 0) {
+      return { linea: cruda, referencia: resto, cantidad, matches };
+    }
+  }
+  return { linea: cruda, referencia: cruda, cantidad: 1, matches: directos };
+}
+
+function parsearRenglones(texto: string, catalogo: Producto[]): RenglonCarga[] {
+  const renglones: RenglonCarga[] = [];
+  for (const cruda of texto.split(/\r?\n/)) {
+    const linea = cruda.trim();
+    if (!linea) continue;
+    renglones.push(partirRenglon(linea, catalogo));
+  }
+  return renglones;
+}
+
 function coincideProducto(producto: Producto, consulta: string): boolean {
   const tokens = consulta.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return true;
   const texto =
     `${producto.modelo} ${producto.marcas?.nombre ?? ''} ${producto.codigo_barras}`.toLowerCase();
   return tokens.every((t) => texto.includes(t));
-}
-
-function parsearRenglones(texto: string): {
-  renglones: RenglonCarga[];
-  ignoradas: string[];
-} {
-  const renglones: RenglonCarga[] = [];
-  const ignoradas: string[] = [];
-
-  for (const cruda of texto.split(/\r?\n/)) {
-    const linea = cruda.trim();
-    if (!linea) continue;
-
-    const partes = linea.split(/[\s,;]+/).filter(Boolean);
-    const codigo = partes[0];
-    const cantidad = partes[1] === undefined ? 1 : Number(partes[1]);
-
-    if (!codigo || partes.length > 2 || !Number.isInteger(cantidad) || cantidad < 0) {
-      ignoradas.push(linea);
-      continue;
-    }
-    renglones.push({ codigo_barras: codigo, cantidad });
-  }
-
-  return { renglones, ignoradas };
 }
 
 function mensajeError(e: unknown): string {
@@ -637,6 +680,7 @@ function InventarioAdmin() {
         <CargaMasivaModal
           sucursales={sucursales}
           sucursalActualId={sucursalId}
+          catalogo={catalogo}
           onCerrar={() => setModalCargaMasiva(false)}
           onGuardado={async () => {
             setModalCargaMasiva(false);
@@ -839,11 +883,13 @@ function AjustarExistenciaModal({
 function CargaMasivaModal({
   sucursales,
   sucursalActualId,
+  catalogo,
   onCerrar,
   onGuardado,
 }: {
   sucursales: { id: string; nombre: string; es_matriz?: boolean }[];
   sucursalActualId: string;
+  catalogo: Producto[];
   onCerrar: () => void;
   onGuardado: () => void | Promise<void>;
 }) {
@@ -856,8 +902,11 @@ function CargaMasivaModal({
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CargaMasivaResultado | null>(null);
 
-  const { renglones, ignoradas } = parsearRenglones(texto);
-  const unidades = renglones.reduce((suma, r) => suma + r.cantidad, 0);
+  const renglones = parsearRenglones(texto, catalogo);
+  const listos = renglones.filter((r) => r.matches.length === 1);
+  const ambiguos = renglones.filter((r) => r.matches.length > 1);
+  const sinMatch = renglones.filter((r) => r.matches.length === 0);
+  const unidades = listos.reduce((suma, r) => suma + r.cantidad, 0);
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
@@ -866,7 +915,7 @@ function CargaMasivaModal({
       return;
     }
     if (renglones.length === 0) {
-      setError('Pega al menos un código de barras.');
+      setError('Pega al menos un renglón con la marca y el modelo.');
       return;
     }
 
@@ -876,7 +925,10 @@ function CargaMasivaModal({
       const res = await cargarExistenciasMasivo({
         sucursal_id: sucursalId,
         modo,
-        items: renglones,
+        items: renglones.map((r) => ({
+          codigo_barras: r.linea,
+          cantidad: 1,
+        })),
       });
       setResultado(res);
       setGuardando(false);
@@ -887,6 +939,7 @@ function CargaMasivaModal({
   }
 
   const nombreSucursal = sucursales.find((s) => s.id === sucursalId)?.nombre ?? '';
+  const ambiguosRes = resultado?.ambiguos ?? [];
 
   if (resultado) {
     return (
@@ -910,11 +963,36 @@ function CargaMasivaModal({
             </p>
           )}
 
+          {ambiguosRes.length > 0 && (
+            <div>
+              <p style={{ fontSize: '13px', margin: '0 0 6px' }}>
+                Estos nombres coinciden con más de un producto. Escribe también la
+                marca (por ejemplo GONHER 47):
+              </p>
+              <p
+                className="mono"
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  margin: 0,
+                  maxHeight: '160px',
+                  overflowY: 'auto',
+                }}
+              >
+                {ambiguosRes.map((fila) => (
+                  <span key={fila.referencia} style={{ display: 'block' }}>
+                    {fila.referencia}: {fila.opciones.join(', ')}
+                  </span>
+                ))}
+              </p>
+            </div>
+          )}
+
           {resultado.no_encontrados.length > 0 && (
             <div>
               <p style={{ fontSize: '13px', margin: '0 0 6px' }}>
-                Estos códigos no están en el catálogo y quedaron sin aplicar. Da de
-                alta el producto y vuelve a cargarlos:
+                Estos renglones no se relacionaron con el catálogo y quedaron sin
+                aplicar:
               </p>
               <p
                 className="mono"
@@ -979,38 +1057,72 @@ function CargaMasivaModal({
 
         <label className={styles.field}>
           <span className={styles.fieldLabel}>
-            Códigos de barras, uno por línea, con la cantidad
+            Marca y modelo, uno por línea. La cantidad al final es opcional
           </span>
           <textarea
             className={styles.input}
             rows={10}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            placeholder={'7501121600023 6\n7501121600030 4\n7501121600047'}
+            placeholder={'GONHER 47 6\nGONHER 35\nLTH 22 F 4\nGONHER22F'}
             autoFocus
             style={{ fontFamily: 'monospace', resize: 'vertical' }}
           />
         </label>
 
         <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
-          Si omites la cantidad se cuenta 1, así puedes escanear una pieza por
-          línea. Los códigos repetidos se suman.{' '}
+          Relaciona cada renglón con una batería del catálogo. Sirve{' '}
+          <strong>GONHER 47</strong>, <strong>GONHER47</strong> o el código de barras.
+          Si omites la cantidad se cuenta 1.{' '}
           <strong className="mono" style={{ color: 'var(--primary)' }}>
-            {renglones.length}
+            {listos.length}
           </strong>{' '}
-          renglones,{' '}
+          listos,{' '}
           <strong className="mono" style={{ color: 'var(--primary)' }}>
             {unidades}
           </strong>{' '}
           unidades.
-          {ignoradas.length > 0 && (
+          {ambiguos.length > 0 && (
             <>
               {' '}
-              {ignoradas.length} línea{ignoradas.length === 1 ? '' : 's'} sin formato
-              válido se ignorará{ignoradas.length === 1 ? '' : 'n'}.
+              {ambiguos.length} con más de una coincidencia: escribe la marca.
+            </>
+          )}
+          {sinMatch.length > 0 && (
+            <>
+              {' '}
+              {sinMatch.length} sin relacionar.
             </>
           )}
         </p>
+
+        {renglones.length > 0 && (
+          <div
+            className="mono"
+            style={{
+              fontSize: '12px',
+              maxHeight: '140px',
+              overflowY: 'auto',
+              color: 'var(--text-secondary)',
+            }}
+          >
+            {renglones.slice(0, 12).map((r, i) => (
+              <div key={`${i}-${r.linea}`}>
+                {r.matches.length === 1
+                  ? `${r.linea} → ${etiquetaProducto(r.matches[0])} ×${r.cantidad}`
+                  : r.matches.length > 1
+                    ? `${r.linea} → ${r.matches.length} coincidencias (${r.matches
+                        .slice(0, 4)
+                        .map(etiquetaProducto)
+                        .join(', ')})`
+                    : `${r.linea} → no está en el catálogo`}
+              </div>
+            ))}
+            {renglones.length > 12 && (
+              <div>… y {renglones.length - 12} renglones más</div>
+            )}
+          </div>
+        )}
 
         {error && <p className={styles.errorBanner}>{error}</p>}
 
@@ -1023,7 +1135,7 @@ function CargaMasivaModal({
             className={styles.btnPrimary}
             disabled={guardando || renglones.length === 0}
           >
-            {guardando ? 'Cargando…' : `Cargar ${renglones.length} productos`}
+            {guardando ? 'Cargando…' : `Cargar ${listos.length} productos`}
           </button>
         </div>
       </form>

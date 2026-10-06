@@ -528,7 +528,8 @@ function ReportesAdmin() {
               Selecciona los filtros y haz clic en «Consultar Reporte» para generar la auditoría.
             </div>
           )}
-          </>}
+            </>
+          )}
         </main>
       </div>
     </div>

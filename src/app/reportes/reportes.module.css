@@ -650,6 +650,13 @@
   border-bottom: none;
 }
 
+.emptyText {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .errorBanner {
   background: var(--error-container);
   color: var(--on-error-container);

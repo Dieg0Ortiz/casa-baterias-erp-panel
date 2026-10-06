@@ -82,7 +82,12 @@ export interface CargaMasivaInput {
   sucursal_id: string;
   /** `sumar` acumula sobre lo que ya hay; `reemplazar` deja la cantidad exacta. */
   modo: 'sumar' | 'reemplazar';
-  items: { codigo_barras: string; cantidad: number }[];
+  items: { referencia?: string; codigo_barras?: string; cantidad: number }[];
+}
+
+export interface CargaMasivaAmbiguo {
+  referencia: string;
+  opciones: string[];
 }
 
 export interface CargaMasivaResultado {
@@ -91,6 +96,7 @@ export interface CargaMasivaResultado {
   unidades: number;
   folio?: string | null;
   no_encontrados: string[];
+  ambiguos?: CargaMasivaAmbiguo[];
 }
 
 export function cargarExistenciasMasivo(input: CargaMasivaInput) {
