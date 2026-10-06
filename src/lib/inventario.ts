@@ -65,14 +65,20 @@ export function corregirSucursal(input: CorregirSucursalInput) {
 }
 
 export interface ReabastecerInput {
-  producto_id: string;
   sucursal_id: string;
-  cantidad: number;
   nota?: string;
+  items: { producto_id: string; cantidad: number }[];
+}
+
+export interface ReabastecerResultado {
+  folio?: string | null;
+  aplicados: number;
+  unidades: number;
+  nota?: string | null;
 }
 
 export function reabastecerInventario(input: ReabastecerInput) {
-  return api<unknown>('/inventory/reabastecer', {
+  return api<ReabastecerResultado>('/inventory/reabastecer', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -82,6 +88,7 @@ export interface CargaMasivaInput {
   sucursal_id: string;
   /** `sumar` acumula sobre lo que ya hay; `reemplazar` deja la cantidad exacta. */
   modo: 'sumar' | 'reemplazar';
+  nota?: string;
   items: { referencia?: string; codigo_barras?: string; cantidad: number }[];
 }
 
@@ -95,6 +102,7 @@ export interface CargaMasivaResultado {
   aplicados: number;
   unidades: number;
   folio?: string | null;
+  nota?: string | null;
   no_encontrados: string[];
   ambiguos?: CargaMasivaAmbiguo[];
 }

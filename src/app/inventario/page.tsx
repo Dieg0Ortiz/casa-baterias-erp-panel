@@ -669,7 +669,6 @@ function InventarioAdmin() {
           sucursalActualId={sucursalId}
           onCerrar={() => setModalReabastecer(false)}
           onGuardado={async () => {
-            setModalReabastecer(false);
             await cargar(sucursalId);
           }}
         />
@@ -897,6 +896,7 @@ function CargaMasivaModal({
     sucursalActualId || sucursales[0]?.id || '',
   );
   const [modo, setModo] = useState<'sumar' | 'reemplazar'>('sumar');
+  const [nota, setNota] = useState('');
   const [texto, setTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -925,6 +925,7 @@ function CargaMasivaModal({
       const res = await cargarExistenciasMasivo({
         sucursal_id: sucursalId,
         modo,
+        nota: nota.trim() || undefined,
         items: renglones.map((r) => ({
           codigo_barras: r.linea,
           cantidad: 1,
@@ -958,8 +959,14 @@ function CargaMasivaModal({
           </p>
           {resultado.folio && (
             <p style={{ fontSize: '13px', margin: 0 }}>
-              Acuse <strong className="mono">{resultado.folio}</strong>. Queda en
-              Reportes → Altas de inventario para descargarlo.
+              Acuse <strong className="mono">{resultado.folio}</strong>
+              {resultado.nota ? (
+                <>
+                  {' '}
+                  · Factura/nota <strong className="mono">{resultado.nota}</strong>
+                </>
+              ) : null}
+              . Queda en Reportes → Altas de inventario para descargarlo.
             </p>
           )}
 
@@ -1054,6 +1061,17 @@ function CargaMasivaModal({
             </select>
           </label>
         </div>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Folio de factura o nota (una vez para todas las pilas)</span>
+          <input
+            className={styles.input}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Ej. FAC-4928 o Nota 15"
+            maxLength={80}
+          />
+        </label>
 
         <label className={styles.field}>
           <span className={styles.fieldLabel}>
@@ -1163,14 +1181,17 @@ function ReabastecerModal({
   const [busqueda, setBusqueda] = useState('');
   const [cantidad, setCantidad] = useState('1');
   const [nota, setNota] = useState('');
+  const [lista, setLista] = useState<{ producto: Producto; cantidad: number }[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   const coincidencias = catalogo.filter((p) => coincideProducto(p, busqueda));
   const productoSeleccionado = catalogo.find((p) => p.id === productoId);
   const stockEnSucursal = (productoSeleccionado?.inventario ?? []).find(
     (inv) => inv.sucursal_id === sucursalId,
   )?.cantidad ?? 0;
+  const unidades = lista.reduce((suma, r) => suma + r.cantidad, 0);
 
   function elegirProducto(id: string) {
     const elegido = catalogo.find((p) => p.id === id);
@@ -1194,14 +1215,9 @@ function ReabastecerModal({
     }
   }
 
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    if (!sucursalId) {
-      setError('Selecciona la sucursal de destino.');
-      return;
-    }
-    if (!productoId) {
-      setError('Selecciona el producto a reabastecer.');
+  function agregarPila() {
+    if (!productoSeleccionado) {
+      setError('Busca y elige la pila antes de agregarla.');
       return;
     }
     const cantNum = Number(cantidad);
@@ -1209,19 +1225,56 @@ function ReabastecerModal({
       setError('Ingresa una cantidad válida mayor a cero.');
       return;
     }
+    setLista((prev) => {
+      const i = prev.findIndex((r) => r.producto.id === productoSeleccionado.id);
+      if (i >= 0) {
+        return prev.map((r, idx) =>
+          idx === i ? { ...r, cantidad: r.cantidad + cantNum } : r,
+        );
+      }
+      return [...prev, { producto: productoSeleccionado, cantidad: cantNum }];
+    });
+    setProductoId('');
+    setBusqueda('');
+    setCantidad('1');
+    setError(null);
+    setAviso(null);
+  }
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (!sucursalId) {
+      setError('Selecciona la sucursal de destino.');
+      return;
+    }
+    if (lista.length === 0) {
+      setError('Agrega al menos una pila a la lista.');
+      return;
+    }
 
     setGuardando(true);
     setError(null);
     try {
-      await reabastecerInventario({
-        producto_id: productoId,
+      const res = await reabastecerInventario({
         sucursal_id: sucursalId,
-        cantidad: cantNum,
         nota: nota.trim() || undefined,
+        items: lista.map((r) => ({
+          producto_id: r.producto.id,
+          cantidad: r.cantidad,
+        })),
       });
+      const factura = nota.trim();
+      setAviso(
+        `Se dieron de alta ${res.unidades} unidades en ${res.aplicados} pilas` +
+          (factura ? ` con factura/nota ${factura}` : '') +
+          (res.folio ? ` (acuse ${res.folio})` : '') +
+          '. El folio sigue para la siguiente pila.',
+      );
+      setLista([]);
       await onGuardado();
     } catch (err) {
       setError(mensajeError(err));
+    } finally {
       setGuardando(false);
     }
   }
@@ -1246,7 +1299,33 @@ function ReabastecerModal({
           </label>
 
           <label className={styles.field}>
-            <span className={styles.fieldLabel}>Cantidad a Ingresar (+ Unidades)</span>
+            <span className={styles.fieldLabel}>Folio de factura o nota</span>
+            <input
+              className={styles.input}
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder="Ej. FAC-4928 o Nota 15"
+              maxLength={80}
+            />
+          </label>
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-8px 0 4px' }}>
+          Lo escribes una vez y queda en todas las pilas de esta alta.
+        </p>
+
+        <div className={styles.formRow}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Buscar pila (marca y modelo)</span>
+            <input
+              className={styles.input}
+              value={busqueda}
+              onChange={(e) => cambiarBusqueda(e.target.value)}
+              placeholder="Ej. GONHER 47"
+              autoFocus
+            />
+          </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Cantidad</span>
             <input
               className={styles.input}
               inputMode="numeric"
@@ -1256,17 +1335,6 @@ function ReabastecerModal({
             />
           </label>
         </div>
-
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Buscar pila (marca y modelo)</span>
-          <input
-            className={styles.input}
-            value={busqueda}
-            onChange={(e) => cambiarBusqueda(e.target.value)}
-            placeholder="Ej. GONHER 47"
-            autoFocus
-          />
-        </label>
 
         {busqueda.trim() && coincidencias.length === 0 && (
           <p style={{ fontSize: '12px', color: 'var(--error)', margin: '-4px 0 4px' }}>
@@ -1307,24 +1375,73 @@ function ReabastecerModal({
           </p>
         )}
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Nota / Folio de Compra (opcional)</span>
-          <input
-            className={styles.input}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="Ej. Factura Proveedor LTH #4928"
-          />
-        </label>
+        <button
+          type="button"
+          className={styles.btnSecondary}
+          onClick={agregarPila}
+          disabled={!productoSeleccionado}
+        >
+          Agregar pila a la lista
+        </button>
 
+        {lista.length > 0 && (
+          <ul
+            className="mono"
+            style={{
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              fontSize: '13px',
+              maxHeight: '160px',
+              overflowY: 'auto',
+            }}
+          >
+            {lista.map((r) => (
+              <li
+                key={r.producto.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  padding: '4px 0',
+                  borderBottom: '1px dashed var(--outline-variant)',
+                }}
+              >
+                <span>
+                  {etiquetaProducto(r.producto)} ×{r.cantidad}
+                </span>
+                <button
+                  type="button"
+                  className={styles.btnSecondary}
+                  style={{ padding: '2px 8px', fontSize: '12px' }}
+                  onClick={() =>
+                    setLista((prev) => prev.filter((x) => x.producto.id !== r.producto.id))
+                  }
+                >
+                  Quitar
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {aviso && (
+          <p style={{ fontSize: '13px', color: 'var(--success)', margin: 0 }}>{aviso}</p>
+        )}
         {error && <p className={styles.errorBanner}>{error}</p>}
 
         <div className={styles.modalFooter}>
           <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-            Cancelar
+            {lista.length === 0 && aviso ? 'Cerrar' : 'Cancelar'}
           </button>
-          <button type="submit" className={styles.btnPrimary} disabled={guardando}>
-            {guardando ? 'Ingresando…' : '+ Registrar Entrada de Stock'}
+          <button
+            type="submit"
+            className={styles.btnPrimary}
+            disabled={guardando || lista.length === 0}
+          >
+            {guardando
+              ? 'Ingresando…'
+              : `Dar de alta ${lista.length} pila${lista.length === 1 ? '' : 's'} (${unidades})`}
           </button>
         </div>
       </form>
