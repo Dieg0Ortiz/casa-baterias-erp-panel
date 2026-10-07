@@ -1191,17 +1191,52 @@ function ReabastecerModal({
   const stockEnSucursal = (productoSeleccionado?.inventario ?? []).find(
     (inv) => inv.sucursal_id === sucursalId,
   )?.cantidad ?? 0;
-  const unidades = lista.reduce((suma, r) => suma + r.cantidad, 0);
+  const cantPendiente = (() => {
+    const n = Number(cantidad);
+    if (Number.isNaN(n) || n <= 0) return 0;
+    return Math.floor(n);
+  })();
+  const lineasListas = (() => {
+    const lineas = lista.map((r) => ({ producto: r.producto, cantidad: r.cantidad }));
+    if (productoSeleccionado && cantPendiente > 0) {
+      const i = lineas.findIndex((r) => r.producto.id === productoSeleccionado.id);
+      if (i >= 0) {
+        lineas[i] = { ...lineas[i], cantidad: lineas[i].cantidad + cantPendiente };
+      } else {
+        lineas.push({ producto: productoSeleccionado, cantidad: cantPendiente });
+      }
+    }
+    return lineas;
+  })();
+  const unidades = lineasListas.reduce((suma, r) => suma + r.cantidad, 0);
+
+  function meterEnLista(producto: Producto, cantNum: number) {
+    setLista((prev) => {
+      const i = prev.findIndex((r) => r.producto.id === producto.id);
+      if (i >= 0) {
+        return prev.map((r, idx) =>
+          idx === i ? { ...r, cantidad: r.cantidad + cantNum } : r,
+        );
+      }
+      return [...prev, { producto, cantidad: cantNum }];
+    });
+    setProductoId('');
+    setBusqueda('');
+    setCantidad('1');
+    setError(null);
+    setAviso(null);
+  }
 
   function elegirProducto(id: string) {
     const elegido = catalogo.find((p) => p.id === id);
-    setProductoId(id);
-    setBusqueda(
-      elegido
-        ? `${elegido.marcas?.nombre ?? ''} ${elegido.modelo}`.trim()
-        : '',
-    );
-    setError(null);
+    if (!elegido) return;
+    if (cantPendiente <= 0) {
+      setProductoId(id);
+      setBusqueda(`${elegido.marcas?.nombre ?? ''} ${elegido.modelo}`.trim());
+      setError('Ingresa una cantidad válida mayor a cero.');
+      return;
+    }
+    meterEnLista(elegido, cantPendiente);
   }
 
   function cambiarBusqueda(valor: string) {
@@ -1217,28 +1252,14 @@ function ReabastecerModal({
 
   function agregarPila() {
     if (!productoSeleccionado) {
-      setError('Busca y elige la pila antes de agregarla.');
+      setError('Elige la pila en las coincidencias. Con una sola, Dar de alta ya la toma.');
       return;
     }
-    const cantNum = Number(cantidad);
-    if (Number.isNaN(cantNum) || cantNum <= 0) {
+    if (cantPendiente <= 0) {
       setError('Ingresa una cantidad válida mayor a cero.');
       return;
     }
-    setLista((prev) => {
-      const i = prev.findIndex((r) => r.producto.id === productoSeleccionado.id);
-      if (i >= 0) {
-        return prev.map((r, idx) =>
-          idx === i ? { ...r, cantidad: r.cantidad + cantNum } : r,
-        );
-      }
-      return [...prev, { producto: productoSeleccionado, cantidad: cantNum }];
-    });
-    setProductoId('');
-    setBusqueda('');
-    setCantidad('1');
-    setError(null);
-    setAviso(null);
+    meterEnLista(productoSeleccionado, cantPendiente);
   }
 
   async function guardar(e: FormEvent) {
@@ -1247,8 +1268,8 @@ function ReabastecerModal({
       setError('Selecciona la sucursal de destino.');
       return;
     }
-    if (lista.length === 0) {
-      setError('Agrega al menos una pila a la lista.');
+    if (lineasListas.length === 0) {
+      setError('Elige la pila y la cantidad, o agrégala a la lista.');
       return;
     }
 
@@ -1258,7 +1279,7 @@ function ReabastecerModal({
       const res = await reabastecerInventario({
         sucursal_id: sucursalId,
         nota: nota.trim() || undefined,
-        items: lista.map((r) => ({
+        items: lineasListas.map((r) => ({
           producto_id: r.producto.id,
           cantidad: r.cantidad,
         })),
@@ -1271,6 +1292,9 @@ function ReabastecerModal({
           '. El folio sigue para la siguiente pila.',
       );
       setLista([]);
+      setProductoId('');
+      setBusqueda('');
+      setCantidad('1');
       await onGuardado();
     } catch (err) {
       setError(mensajeError(err));
@@ -1342,7 +1366,7 @@ function ReabastecerModal({
           </p>
         )}
 
-        {busqueda.trim() && coincidencias.length > 1 && (
+        {busqueda.trim() && coincidencias.length > 0 && (
           <ul className={styles.resultadosBusqueda}>
             {coincidencias.slice(0, 8).map((p) => (
               <li key={p.id}>
@@ -1365,6 +1389,11 @@ function ReabastecerModal({
             )}
           </ul>
         )}
+        {busqueda.trim() && coincidencias.length > 1 && (
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
+            Toca la pila que vas a dar de alta. Queda en la lista con la cantidad de arriba.
+          </p>
+        )}
 
         {productoSeleccionado && (
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '-4px 0 4px' }}>
@@ -1379,9 +1408,9 @@ function ReabastecerModal({
           type="button"
           className={styles.btnSecondary}
           onClick={agregarPila}
-          disabled={!productoSeleccionado}
+          disabled={!productoSeleccionado || cantPendiente <= 0}
         >
-          Agregar pila a la lista
+          Agregar otra pila al mismo folio
         </button>
 
         {lista.length > 0 && (
@@ -1432,16 +1461,16 @@ function ReabastecerModal({
 
         <div className={styles.modalFooter}>
           <button type="button" className={styles.btnSecondary} onClick={onCerrar}>
-            {lista.length === 0 && aviso ? 'Cerrar' : 'Cancelar'}
+            {lineasListas.length === 0 && aviso ? 'Cerrar' : 'Cancelar'}
           </button>
           <button
             type="submit"
             className={styles.btnPrimary}
-            disabled={guardando || lista.length === 0}
+            disabled={guardando || lineasListas.length === 0}
           >
             {guardando
               ? 'Ingresando…'
-              : `Dar de alta ${lista.length} pila${lista.length === 1 ? '' : 's'} (${unidades})`}
+              : `Dar de alta ${lineasListas.length} pila${lineasListas.length === 1 ? '' : 's'} (${unidades})`}
           </button>
         </div>
       </form>
