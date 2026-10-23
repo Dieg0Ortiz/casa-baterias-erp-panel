@@ -314,6 +314,16 @@ function DashboardAdmin({
                                 {formatearDinero(s.caja.monto_esperado)}
                               </span>
                             </div>
+                            {s.caja.total_tarjetas != null && (
+                              <div className={styles.cashBoxRow}>
+                                <span className={styles.cashBoxLabel}>Tarjetas y transferencias:</span>
+                                <span className={`${styles.cashBoxValue} mono`}>
+                                  {formatearDinero(
+                                    (s.caja.total_tarjetas ?? 0) + (s.caja.total_transferencias ?? 0),
+                                  )}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

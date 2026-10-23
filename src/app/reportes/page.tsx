@@ -4,16 +4,20 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ApiError } from '@/lib/api';
 import { logout, useSesion } from '@/lib/auth';
 import {
   type Empleado,
   type ReporteVentas,
   type UtilidadReporte,
+  type VentaReporte,
+  cancelarVenta,
+  grupoDeMetodo,
   listarEmpleados,
   obtenerReporteVentas,
   obtenerReporteUtilidades,
+  totalesPorGrupo,
 } from '@/lib/admin';
 import {
   type Producto,
@@ -25,6 +29,20 @@ import {
 import { generarReporteVentasPdf } from '@/lib/generadorPdf';
 import { ReporteAltas } from './ReporteAltas';
 import { ReporteReimpresiones } from './ReporteReimpresiones';
+import { ReporteCortes } from './ReporteCortes';
+import { ReporteDevoluciones } from './ReporteDevoluciones';
+import { ReporteCancelaciones } from './ReporteCancelaciones';
+
+type Vista = 'ventas' | 'cortes' | 'devoluciones' | 'cancelaciones' | 'altas' | 'reimpresiones';
+
+const VISTAS: Array<{ id: Vista; etiqueta: string }> = [
+  { id: 'ventas', etiqueta: 'Ventas' },
+  { id: 'cortes', etiqueta: 'Cortes de caja' },
+  { id: 'devoluciones', etiqueta: 'Devoluciones' },
+  { id: 'cancelaciones', etiqueta: 'Cancelaciones' },
+  { id: 'altas', etiqueta: 'Altas de inventario' },
+  { id: 'reimpresiones', etiqueta: 'Reimpresiones' },
+];
 import {
   IconBolt,
   IconDashboard,
@@ -104,7 +122,7 @@ function ReportesAdmin() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [vista, setVista] = useState<'ventas' | 'altas' | 'reimpresiones'>('ventas');
+  const [vista, setVista] = useState<Vista>('ventas');
 
   const tieneFiltrosActivos = Boolean(
     sucursalId || usuarioId || productoId || fechaDesde || fechaHasta !== hoyLocal() || reporte || reporteUtilidad,
@@ -193,6 +211,12 @@ function ReportesAdmin() {
     router.refresh();
   }
 
+  // Lo cobrado (efectivo, tarjetas, transferencias) va separado de lo vendido
+  // a crédito, que no entra a ninguna caja.
+  const porGrupo = reporte ? reporte.totales.por_grupo ?? totalesPorGrupo(reporte.ventas) : null;
+  const ventasCredito = reporte?.ventas.filter((v) => grupoDeMetodo(v.metodo_pago) === 'credito') ?? [];
+  const ventasCobradas = reporte?.ventas.filter((v) => grupoDeMetodo(v.metodo_pago) !== 'credito') ?? [];
+
   return (
     <div className={styles.layout}>
       <Sidebar active="reportes" menuAbierto={menuAbierto} onCerrarMenu={() => setMenuAbierto(false)} />
@@ -218,32 +242,27 @@ function ReportesAdmin() {
 
         <main className={styles.mainContent}>
           <div className={styles.vistaTabs}>
-            <button
-              type="button"
-              className={vista === 'ventas' ? styles.vistaTabActiva : styles.vistaTab}
-              onClick={() => setVista('ventas')}
-            >
-              Ventas
-            </button>
-            <button
-              type="button"
-              className={vista === 'altas' ? styles.vistaTabActiva : styles.vistaTab}
-              onClick={() => setVista('altas')}
-            >
-              Altas de inventario
-            </button>
-            <button
-              type="button"
-              className={vista === 'reimpresiones' ? styles.vistaTabActiva : styles.vistaTab}
-              onClick={() => setVista('reimpresiones')}
-            >
-              Reimpresiones
-            </button>
+            {VISTAS.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                className={vista === v.id ? styles.vistaTabActiva : styles.vistaTab}
+                onClick={() => setVista(v.id)}
+              >
+                {v.etiqueta}
+              </button>
+            ))}
           </div>
           {vista === 'altas' ? (
             <ReporteAltas />
           ) : vista === 'reimpresiones' ? (
             <ReporteReimpresiones />
+          ) : vista === 'cortes' ? (
+            <ReporteCortes />
+          ) : vista === 'devoluciones' ? (
+            <ReporteDevoluciones />
+          ) : vista === 'cancelaciones' ? (
+            <ReporteCancelaciones />
           ) : (
             <>
           <section className={styles.filterCard}>
@@ -389,12 +408,14 @@ function ReportesAdmin() {
                     </div>
                   </div>
                   <div className={`${styles.statValue} mono`}>{reporte.totales.ventas}</div>
-                  <div className={styles.statSub}>Transacciones completadas</div>
+                  <div className={styles.statSub}>
+                    {ventasCobradas.length} cobradas · {ventasCredito.length} a crédito
+                  </div>
                 </div>
 
                 <div className={styles.statCard}>
                   <div className={styles.statHeader}>
-                    <span className={styles.statLabel}>Monto Total Recaudado</span>
+                    <span className={styles.statLabel}>Total Cobrado</span>
                     <div
                       className={styles.statIconBadge}
                       style={{ background: 'rgba(22, 163, 74, 0.12)', color: '#16a34a' }}
@@ -406,9 +427,9 @@ function ReportesAdmin() {
                     className={`${styles.statValue} mono`}
                     style={{ color: 'var(--primary)' }}
                   >
-                    {formatearDinero(reporte.totales.monto)}
+                    {formatearDinero(porGrupo?.cobrado ?? 0)}
                   </div>
-                  <div className={styles.statSub}>Ingresos brutos acumulados</div>
+                  <div className={styles.statSub}>Efectivo, tarjetas y transferencias (sin créditos)</div>
                 </div>
 
                 <div className={styles.statCard}>
@@ -449,11 +470,44 @@ function ReportesAdmin() {
                 )}
               </section>
 
+              {porGrupo && (
+                <section className={styles.statsGrid}>
+                  <TarjetaGrupo
+                    titulo="Efectivo"
+                    monto={porGrupo.efectivo}
+                    nota="Corte de efectivo"
+                    color="#16a34a"
+                    icono={<IconCash style={{ width: '18px', height: '18px' }} />}
+                  />
+                  <TarjetaGrupo
+                    titulo="Tarjetas"
+                    monto={porGrupo.tarjeta}
+                    nota="Corte de tarjetas y transferencias"
+                    color="#0284c7"
+                    icono={<IconCard style={{ width: '18px', height: '18px' }} />}
+                  />
+                  <TarjetaGrupo
+                    titulo="Transferencias"
+                    monto={porGrupo.transferencia}
+                    nota="Corte de tarjetas y transferencias"
+                    color="#ea580c"
+                    icono={<IconBolt style={{ width: '18px', height: '18px' }} />}
+                  />
+                  <TarjetaGrupo
+                    titulo="Crédito a empresas"
+                    monto={porGrupo.credito}
+                    nota="No se cobró: no entra a ningún corte"
+                    color="#b45309"
+                    icono={<IconBuilding style={{ width: '18px', height: '18px' }} />}
+                  />
+                </section>
+              )}
+
               <section className={styles.bentoCard}>
                 <div className={styles.cardHeader}>
                   <h2 className={styles.cardTitle}>
                     <IconReports style={{ color: 'var(--primary)' }} />
-                    <span>Detalle de Transacciones (Haz clic en una fila para ver el desglose)</span>
+                    <span>Ventas cobradas (haz clic en una fila para ver el desglose)</span>
                   </h2>
                   {reporte.ventas.length > 0 && (
                     <button
@@ -476,50 +530,35 @@ function ReportesAdmin() {
                 </div>
 
                 <div className={styles.tableScroll}>
-                  {reporte.ventas.length === 0 ? (
+                  {ventasCobradas.length === 0 ? (
                     <div className={styles.emptyText}>
-                      No se encontraron ventas para los filtros seleccionados.
+                      No se encontraron ventas cobradas para los filtros seleccionados.
                     </div>
                   ) : (
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Folio</th>
-                          <th>Fecha y Hora</th>
-                          <th>Sucursal</th>
-                          <th>Empleado</th>
-                          <th>Método de Pago</th>
-                          <th style={{ textAlign: 'center' }}>Ítems</th>
-                          <th style={{ textAlign: 'right' }}>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reporte.ventas.map((venta) => (
-                          <VentaFila
-                            key={venta.id}
-                            folio={venta.folio}
-                            fecha={venta.created_at}
-                            sucursal={venta.sucursal}
-                            empleado={venta.usuario}
-                            metodoPago={venta.metodo_pago}
-                            desglosePago={venta.desglose_pago}
-                            total={venta.total}
-                            items={venta.items.map((item) => ({
-                              producto: item.modelo || item.producto,
-                              marca: item.marca,
-                              cantidad: item.cantidad,
-                              precio: item.precio_unitario,
-                              tipoPrecio: item.tipo_precio,
-                              conCasco: item.con_casco,
-                              comisionCasco: item.comision_casco,
-                            }))}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
+                    <TablaVentas ventas={ventasCobradas} onCancelada={() => void consultar()} />
                   )}
                 </div>
               </section>
+
+              {ventasCredito.length > 0 && (
+                <section className={styles.bentoCard}>
+                  <div className={styles.cardHeader}>
+                    <h2 className={styles.cardTitle}>
+                      <IconBuilding style={{ color: '#b45309' }} />
+                      <span>
+                        Ventas a crédito a empresas · {formatearDinero(porGrupo?.credito ?? 0)}
+                      </span>
+                    </h2>
+                  </div>
+                  <p className={styles.acuseNota}>
+                    No se cobraron en caja: quedan como saldo de la empresa y no forman parte
+                    de ningún corte. Los abonos se registran en Créditos Empresariales.
+                  </p>
+                  <div className={styles.tableScroll}>
+                    <TablaVentas ventas={ventasCredito} onCancelada={() => void consultar()} />
+                  </div>
+                </section>
+              )}
             </>
           )}
 
@@ -536,7 +575,87 @@ function ReportesAdmin() {
   );
 }
 
+function TarjetaGrupo({
+  titulo,
+  monto,
+  nota,
+  color,
+  icono,
+}: {
+  titulo: string;
+  monto: number;
+  nota: string;
+  color: string;
+  icono: ReactNode;
+}) {
+  return (
+    <div className={styles.statCard}>
+      <div className={styles.statHeader}>
+        <span className={styles.statLabel}>{titulo}</span>
+        <div className={styles.statIconBadge} style={{ background: `${color}1f`, color }}>
+          {icono}
+        </div>
+      </div>
+      <div className={`${styles.statValue} mono`} style={{ color }}>
+        {formatearDinero(monto)}
+      </div>
+      <div className={styles.statSub}>{nota}</div>
+    </div>
+  );
+}
+
+function TablaVentas({
+  ventas,
+  onCancelada,
+}: {
+  ventas: VentaReporte[];
+  onCancelada: () => void;
+}) {
+  return (
+    <table className={styles.table}>
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Fecha y Hora</th>
+          <th>Sucursal</th>
+          <th>Empleado</th>
+          <th>Método de Pago</th>
+          <th style={{ textAlign: 'center' }}>Ítems</th>
+          <th style={{ textAlign: 'right' }}>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {ventas.map((venta) => (
+          <VentaFila
+            key={venta.id}
+            ventaId={venta.id}
+            onCancelada={onCancelada}
+            folio={venta.folio}
+            fecha={venta.created_at}
+            sucursal={venta.sucursal}
+            empleado={venta.usuario}
+            metodoPago={venta.metodo_pago}
+            desglosePago={venta.desglose_pago}
+            total={venta.total}
+            items={venta.items.map((item) => ({
+              producto: item.modelo || item.producto,
+              marca: item.marca,
+              cantidad: item.cantidad,
+              precio: item.precio_unitario,
+              tipoPrecio: item.tipo_precio,
+              conCasco: item.con_casco,
+              comisionCasco: item.comision_casco,
+            }))}
+          />
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function VentaFila({
+  ventaId,
+  onCancelada,
   folio,
   fecha,
   sucursal,
@@ -546,6 +665,8 @@ function VentaFila({
   total,
   items,
 }: {
+  ventaId: string;
+  onCancelada: () => void;
   folio: string;
   fecha: string;
   sucursal: string | null;
@@ -560,10 +681,29 @@ function VentaFila({
     precio: number;
     tipoPrecio?: string | null;
     conCasco?: boolean | null;
+    /** Depósito por casco cobrado en todo el renglón (no por pieza). */
     comisionCasco?: number | null;
   }[];
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [errorCancelar, setErrorCancelar] = useState<string | null>(null);
+
+  async function confirmarCancelacion() {
+    setEnviando(true);
+    setErrorCancelar(null);
+    try {
+      await cancelarVenta(ventaId, motivo.trim());
+      setCancelando(false);
+      onCancelada();
+    } catch (e) {
+      setErrorCancelar(mensajeError(e));
+    } finally {
+      setEnviando(false);
+    }
+  }
 
   const renderMetodoBadge = () => {
     switch (metodoPago) {
@@ -731,7 +871,8 @@ function VentaFila({
               </thead>
               <tbody>
                 {items.map((it, idx) => {
-                  const comisionUnit = (it.conCasco === false) ? (it.comisionCasco ?? 0) : 0;
+                  const comisionRenglon = it.conCasco === false ? (it.comisionCasco ?? 0) : 0;
+                  const comisionUnit = it.cantidad > 0 ? comisionRenglon / it.cantidad : 0;
                   const precioEfectivo = it.precio + comisionUnit;
                   return (
                     <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
@@ -780,7 +921,7 @@ function VentaFila({
                             </span>
                           ) : (
                             <span style={{ color: '#dc2626', fontWeight: 600, fontSize: '11px' }}>
-                              Sin casco (+{formatearDinero((it.comisionCasco ?? 0) * it.cantidad)})
+                              Sin casco (+{formatearDinero(comisionRenglon)})
                             </span>
                           )
                         ) : (
@@ -804,6 +945,73 @@ function VentaFila({
                 })}
               </tbody>
             </table>
+
+            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!cancelando ? (
+                <div>
+                  <button
+                    type="button"
+                    className={styles.btnSecondary}
+                    style={{ color: 'var(--error)', borderColor: 'rgba(186, 26, 26, 0.35)' }}
+                    onClick={() => {
+                      setCancelando(true);
+                      setErrorCancelar(null);
+                    }}
+                  >
+                    Cancelar ticket {folio}
+                  </button>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(186, 26, 26, 0.3)',
+                    background: 'rgba(186, 26, 26, 0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                  }}
+                >
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Las piezas regresan al inventario y la venta sale del corte. Solo se puede
+                    mientras el corte de esa caja siga abierto; si ya se cerró, registra una
+                    devolución desde la app.
+                  </div>
+                  <input
+                    className={styles.input}
+                    placeholder="Motivo de la cancelación (obligatorio)"
+                    value={motivo}
+                    maxLength={200}
+                    onChange={(e) => setMotivo(e.target.value)}
+                  />
+                  {errorCancelar && (
+                    <div className={styles.errorBanner} role="alert">
+                      {errorCancelar}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className={styles.btnPrimary}
+                      style={{ background: 'var(--error)' }}
+                      disabled={enviando || motivo.trim().length < 4}
+                      onClick={() => void confirmarCancelacion()}
+                    >
+                      {enviando ? 'Cancelando…' : 'Confirmar cancelación'}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnSecondary}
+                      disabled={enviando}
+                      onClick={() => setCancelando(false)}
+                    >
+                      Volver
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </td>
         </tr>
       )}

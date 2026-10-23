@@ -492,7 +492,15 @@ export default function CascosPage() {
                               )}
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {esVencido ? (
+                              {c.estado === 'cancelado' ? (
+                                <span
+                                  className={styles.badgeResuelto}
+                                  style={{ color: 'var(--text-muted)', background: 'var(--surface-container)' }}
+                                  title="La venta se canceló o la batería se devolvió"
+                                >
+                                  Cancelado
+                                </span>
+                              ) : esVencido ? (
                                 <span className={styles.badgeVencido}>Vencido</span>
                               ) : c.estado === 'pendiente' ? (
                                 <span className={dias <= 3 ? styles.badgeUrgente : styles.badgePendiente}>
@@ -1182,6 +1190,12 @@ function ModalResolverCasco({
             />
           </label>
         )}
+
+        <div className={styles.infoBox}>
+          El dinero sale de la caja abierta de la sucursal de la venta: queda con folio DEV y se
+          resta de su corte de efectivo. El casco entra a la bodega de esa sucursal. Con la caja
+          cerrada no se puede registrar; en ese caso pídelo desde la app al abrir.
+        </div>
 
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Monto a Devolver en Efectivo ($ MXN) *</span>

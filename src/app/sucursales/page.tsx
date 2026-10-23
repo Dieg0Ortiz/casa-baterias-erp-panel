@@ -48,6 +48,8 @@ export default function SucursalesPage() {
   const [formNombre, setFormNombre] = useState('');
   const [formEsMatriz, setFormEsMatriz] = useState(false);
   const [formDireccion, setFormDireccion] = useState('');
+  // Clave de los folios (NV-MAT-000124). Vacía al crear: la base propone una.
+  const [formClave, setFormClave] = useState('');
 
   useEffect(() => {
     if (!autenticado) router.replace('/login');
@@ -76,6 +78,7 @@ export default function SucursalesPage() {
     setFormNombre('');
     setFormEsMatriz(false);
     setFormDireccion('');
+    setFormClave('');
     setModalCrear(true);
   }
 
@@ -83,13 +86,22 @@ export default function SucursalesPage() {
     setFormNombre(s.nombre);
     setFormEsMatriz(s.es_matriz);
     setFormDireccion(s.direccion ?? '');
+    setFormClave(s.clave ?? '');
     setModalEditar(s);
+  }
+
+  function claveInvalida(clave: string): boolean {
+    return clave !== '' && !/^[A-Za-z0-9]{2,6}$/.test(clave);
   }
 
   async function handleCrear(e: FormEvent) {
     e.preventDefault();
     if (!formNombre.trim()) {
       alert('Ingresa el nombre de la sucursal');
+      return;
+    }
+    if (claveInvalida(formClave.trim())) {
+      alert('La clave debe tener de 2 a 6 letras o números');
       return;
     }
 
@@ -100,6 +112,7 @@ export default function SucursalesPage() {
         nombre: formNombre.trim(),
         es_matriz: formEsMatriz,
         direccion: formDireccion.trim() || undefined,
+        clave: formClave.trim().toUpperCase() || undefined,
       });
       setModalCrear(false);
       setExito(`Sucursal "${formNombre.trim()}" agregada exitosamente.`);
@@ -119,6 +132,11 @@ export default function SucursalesPage() {
       alert('Ingresa el nombre de la sucursal');
       return;
     }
+    const clave = formClave.trim().toUpperCase();
+    if (!clave || claveInvalida(clave)) {
+      alert('La clave debe tener de 2 a 6 letras o números');
+      return;
+    }
 
     setGuardando(true);
     setError(null);
@@ -127,6 +145,8 @@ export default function SucursalesPage() {
         nombre: formNombre.trim(),
         es_matriz: formEsMatriz,
         direccion: formDireccion.trim(),
+        // Solo si cambió: la base rechaza cambiarla si ya hay folios con ella.
+        ...(clave !== modalEditar.clave ? { clave } : {}),
       });
       setModalEditar(null);
       setExito(`Sucursal "${formNombre.trim()}" actualizada exitosamente.`);
@@ -336,7 +356,7 @@ export default function SucursalesPage() {
                                 {s.nombre}
                               </div>
                               <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                ID: {s.id.substring(0, 8)}…
+                                {s.clave ? `Folios: NV-${s.clave}-000001` : `ID: ${s.id.substring(0, 8)}…`}
                               </div>
                             </div>
                           </div>
@@ -416,6 +436,22 @@ export default function SucursalesPage() {
                 </div>
 
                 <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Clave para folios</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    placeholder="Opcional, ej. PON"
+                    maxLength={6}
+                    value={formClave}
+                    onChange={(e) => setFormClave(e.target.value.toUpperCase())}
+                  />
+                  <span className={styles.helperText}>
+                    De 2 a 6 letras o números. Los tickets de esta sucursal saldrán como
+                    NV-{formClave.trim() || 'CLAVE'}-000001. Si la dejas vacía, se toma del nombre.
+                  </span>
+                </div>
+
+                <div className={styles.field}>
                   <label className={styles.fieldLabel}>Dirección / Ubicación</label>
                   <textarea
                     className={styles.textarea}
@@ -490,6 +526,22 @@ export default function SucursalesPage() {
                     onChange={(e) => setFormNombre(e.target.value)}
                     required
                   />
+                </div>
+
+                <div className={styles.field}>
+                  <label className={styles.fieldLabel}>Clave para folios *</label>
+                  <input
+                    type="text"
+                    className={styles.input}
+                    maxLength={6}
+                    value={formClave}
+                    onChange={(e) => setFormClave(e.target.value.toUpperCase())}
+                    required
+                  />
+                  <span className={styles.helperText}>
+                    Tickets: NV-{formClave.trim() || 'CLAVE'}-000001. Una vez que la sucursal emite
+                    folios con su clave, ya no se puede cambiar.
+                  </span>
                 </div>
 
                 <div className={styles.field}>

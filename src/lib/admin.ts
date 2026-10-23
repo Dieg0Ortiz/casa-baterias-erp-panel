@@ -9,7 +9,10 @@ export interface CajaSucursal {
   usuario_id: string;
   monto_inicial: number;
   total_ventas: number;
+  /** Efectivo que debe haber en el cajón (sin tarjetas ni transferencias). */
   monto_esperado: number;
+  total_tarjetas?: number;
+  total_transferencias?: number;
 }
 
 export interface SucursalResumen {
@@ -80,9 +83,80 @@ export interface VentaReporte {
   items: ItemVentaReporte[];
 }
 
+/** Montos por forma de pago; el pago mixto ya viene repartido. */
+export interface TotalesPorGrupo {
+  efectivo: number;
+  tarjeta: number;
+  transferencia: number;
+  /** Vendido a crédito: no se cobró, no entra a ningún corte. */
+  credito: number;
+  /** efectivo + tarjeta + transferencia */
+  cobrado: number;
+}
+
 export interface ReporteVentas {
   ventas: VentaReporte[];
-  totales: { ventas: number; monto: number; unidades: number };
+  totales: {
+    ventas: number;
+    monto: number;
+    unidades: number;
+    por_grupo?: TotalesPorGrupo;
+  };
+}
+
+export type GrupoPago = 'efectivo' | 'tarjeta' | 'transferencia' | 'credito';
+
+export function grupoDeMetodo(metodo: string | null | undefined): GrupoPago {
+  switch ((metodo ?? 'efectivo').toLowerCase()) {
+    case 'tarjeta':
+    case 'tarjeta_debito':
+    case 'tarjeta_credito':
+      return 'tarjeta';
+    case 'transferencia':
+      return 'transferencia';
+    case 'credito':
+      return 'credito';
+    default:
+      return 'efectivo';
+  }
+}
+
+export function etiquetaMetodoPago(metodo: string | null | undefined): string {
+  switch ((metodo ?? 'efectivo').toLowerCase()) {
+    case 'tarjeta_debito':
+      return 'Tarjeta de débito';
+    case 'tarjeta_credito':
+      return 'Tarjeta de crédito';
+    case 'tarjeta':
+      return 'Tarjeta';
+    case 'transferencia':
+      return 'Transferencia';
+    case 'mixto':
+      return 'Pago mixto';
+    case 'credito':
+      return 'Crédito a empresa';
+    case 'cheque':
+      return 'Cheque';
+    default:
+      return 'Efectivo';
+  }
+}
+
+/**
+ * Totales por forma de pago de una lista de ventas. Lo calcula el API; esto
+ * es el respaldo para un API que todavía no manda `por_grupo`.
+ */
+export function totalesPorGrupo(ventas: VentaReporte[]): TotalesPorGrupo {
+  const t: TotalesPorGrupo = { efectivo: 0, tarjeta: 0, transferencia: 0, credito: 0, cobrado: 0 };
+  for (const v of ventas) {
+    const partes =
+      (v.metodo_pago ?? '').toLowerCase() === 'mixto' && v.desglose_pago?.length
+        ? v.desglose_pago.map((p) => ({ metodo: p.metodo, monto: Number(p.monto) }))
+        : [{ metodo: v.metodo_pago, monto: Number(v.total) }];
+    for (const p of partes) t[grupoDeMetodo(p.metodo)] += p.monto;
+  }
+  t.cobrado = t.efectivo + t.tarjeta + t.transferencia;
+  return t;
 }
 
 export interface Empleado {
@@ -99,6 +173,8 @@ export interface Empleado {
 export interface SucursalItem {
   id: string;
   nombre: string;
+  /** Clave corta que va en sus folios: NV-MAT-000124. */
+  clave?: string;
   es_matriz: boolean;
   direccion?: string | null;
   activo?: boolean;
@@ -110,12 +186,14 @@ export interface CrearSucursalInput {
   nombre: string;
   es_matriz?: boolean;
   direccion?: string;
+  clave?: string;
 }
 
 export interface ActualizarSucursalInput {
   nombre?: string;
   es_matriz?: boolean;
   direccion?: string;
+  clave?: string;
 }
 
 export interface CrearUsuarioInput {
@@ -275,6 +353,197 @@ export function obtenerReporteReimpresiones(filtros: {
   return api<ReporteReimpresiones>(`/admin/reportes/reimpresiones${q ? `?${q}` : ''}`);
 }
 
+// ----- Cancelaciones de tickets -----
+
+export interface CancelacionTicket {
+  id: string;
+  folio: string;
+  total: number;
+  metodo_pago: string;
+  vendida_en: string;
+  cancelada_en: string | null;
+  motivo: string | null;
+  sucursal: string | null;
+  solicito: string | null;
+  autorizo: string | null;
+}
+
+export interface ReporteCancelaciones {
+  cancelaciones: CancelacionTicket[];
+  totales: { cancelaciones: number; monto: number };
+}
+
+export function obtenerReporteCancelaciones(filtros: {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  sucursal_id?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filtros.fecha_desde) params.set('fecha_desde', filtros.fecha_desde);
+  if (filtros.fecha_hasta) params.set('fecha_hasta', filtros.fecha_hasta);
+  if (filtros.sucursal_id) params.set('sucursal_id', filtros.sucursal_id);
+  const q = params.toString();
+  return api<ReporteCancelaciones>(`/admin/reportes/cancelaciones${q ? `?${q}` : ''}`);
+}
+
+/**
+ * Cancela un ticket: regresa piezas y cascos y lo saca del corte. Solo
+ * mientras el corte de la venta siga abierto; después es una devolución.
+ */
+export function cancelarVenta(ventaId: string, motivo: string) {
+  return api<{ folio: string; total: number }>(`/sales/${ventaId}/cancelar`, {
+    method: 'POST',
+    body: JSON.stringify({ motivo }),
+  });
+}
+
+// ----- Devoluciones (folio DEV) -----
+
+export interface DevolucionLista {
+  id: string;
+  folio: string;
+  tipo: 'deposito_casco' | 'bateria';
+  monto: number;
+  metodo_reembolso: string;
+  motivo: string;
+  cliente_nombre: string | null;
+  created_at: string;
+  sucursal: string | null;
+  venta_folio: string | null;
+  atendio: string | null;
+  autorizo: string | null;
+  items: Array<{
+    marca: string | null;
+    modelo: string | null;
+    cantidad: number;
+    monto: number;
+    reingresa_inventario: boolean;
+  }>;
+}
+
+export interface ReporteDevoluciones {
+  devoluciones: DevolucionLista[];
+  totales: { devoluciones: number; monto: number; depositos: number; baterias: number };
+}
+
+export function etiquetaTipoDevolucion(tipo: string): string {
+  return tipo === 'deposito_casco' ? 'Depósito de casco' : 'Batería devuelta';
+}
+
+export function obtenerReporteDevoluciones(filtros: {
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  sucursal_id?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filtros.fecha_desde) params.set('fecha_desde', filtros.fecha_desde);
+  if (filtros.fecha_hasta) params.set('fecha_hasta', filtros.fecha_hasta);
+  if (filtros.sucursal_id) params.set('sucursal_id', filtros.sucursal_id);
+  const q = params.toString();
+  return api<ReporteDevoluciones>(`/devoluciones${q ? `?${q}` : ''}`);
+}
+
+// ----- Cortes de caja (efectivo y electrónico por separado) -----
+
+export interface CorteCaja {
+  id: string;
+  sucursal_id: string;
+  usuario_id: string;
+  monto_inicial: number;
+  monto_final_reportado: number | null;
+  /** Efectivo esperado en el cajón al cerrar. */
+  monto_calculado: number | null;
+  diferencia: number | null;
+  total_tarjetas: number | null;
+  total_transferencias: number | null;
+  estado: 'abierto' | 'cerrado';
+  abierto_en: string;
+  cerrado_en: string | null;
+}
+
+export interface OperacionCorte {
+  origen: 'venta' | 'intercambio' | 'abono_credito' | 'devolucion';
+  folio: string | null;
+  detalle: string | null;
+  metodo: string;
+  monto: number;
+  creado_en: string;
+}
+
+export interface ResumenCorte {
+  corte_id: string;
+  estado: 'abierto' | 'cerrado';
+  sucursal: string | null;
+  abierto_en: string;
+  cerrado_en: string | null;
+  abrio: string | null;
+  cerro: string | null;
+  efectivo: {
+    monto_inicial: number;
+    ventas: number;
+    ventas_count: number;
+    intercambios: number;
+    abonos_credito: number;
+    devoluciones: number;
+    esperado: number;
+    contado: number | null;
+    diferencia: number | null;
+  };
+  electronico: {
+    tarjeta_debito: number;
+    tarjeta_credito: number;
+    tarjeta_sin_tipo: number;
+    devoluciones_tarjeta: number;
+    total_tarjetas: number;
+    transferencias: number;
+    devoluciones_transferencia: number;
+    total_transferencias: number;
+    total: number;
+    operaciones: OperacionCorte[];
+  };
+  otros: { total: number; operaciones: OperacionCorte[] };
+  creditos: {
+    ventas_count: number;
+    total: number;
+    piezas: number;
+    ventas: Array<{
+      folio: string;
+      empresa: string;
+      total: number;
+      piezas: number;
+      folio_vale: string | null;
+      creado_en: string;
+    }>;
+  };
+  devoluciones: {
+    count: number;
+    total: number;
+    lista: Array<{
+      folio: string;
+      tipo: string;
+      monto: number;
+      metodo: string;
+      venta_folio: string;
+      creado_en: string;
+    }>;
+  };
+  cancelaciones: {
+    count: number;
+    total: number;
+    lista: Array<{ folio: string; total: number; motivo: string | null }>;
+  };
+}
+
+export function listarCortes(sucursalId?: string) {
+  const params = new URLSearchParams({ limite: '120' });
+  if (sucursalId) params.set('sucursal_id', sucursalId);
+  return api<CorteCaja[]>(`/cash?${params.toString()}`);
+}
+
+export function obtenerResumenCorte(corteId: string) {
+  return api<ResumenCorte>(`/cash/${corteId}/resumen`);
+}
+
 export interface UtilidadReporte {
   totalVentas: number;
   totalCosto: number;
@@ -301,7 +570,7 @@ export interface CascoPendiente {
   sucursal: string | null;
   comision_cobrada: number;
   fecha_limite: string;
-  estado: 'pendiente' | 'resuelto' | 'vencido';
+  estado: 'pendiente' | 'resuelto' | 'vencido' | 'cancelado';
   monto_devuelto: number;
   nombre_cliente: string | null;
   telefono_cliente: string | null;
@@ -436,6 +705,12 @@ export function registrarIntercambioCasco(input: RegistrarIntercambioInput) {
 // Módulo de Créditos Empresariales
 // ==========================================
 
+export interface PiezasDeModelo {
+  marca: string | null;
+  modelo: string | null;
+  cantidad: number;
+}
+
 export interface EmpresaCredito {
   id: string;
   nombre: string;
@@ -449,6 +724,8 @@ export interface EmpresaCredito {
   activo: boolean;
   saldo_deudor?: number;
   total_baterias_debidas?: number;
+  /** Pilas en ventas a crédito abiertas, sumadas por modelo. */
+  baterias_por_modelo?: PiezasDeModelo[];
   tiene_vencidas?: boolean;
   ventas_pendientes_count?: number;
   created_at: string;
@@ -463,7 +740,7 @@ export interface CreditoVenta {
   recibido_por: string | null;
   vehiculo_placas: string | null;
   folio_vale: string | null;
-  estado: 'pendiente' | 'parcial' | 'pagado' | 'vencido';
+  estado: 'pendiente' | 'parcial' | 'pagado' | 'vencido' | 'cancelado';
   created_at: string;
   es_vencida?: boolean;
   empresa?: {
@@ -487,10 +764,118 @@ export interface CreditoVenta {
       id: string;
       cantidad: number;
       precio_unitario: number;
-      con_casco: boolean;
-      producto?: { id: string; modelo: string; marca: string; linea: string };
+      con_casco: boolean | null;
+      comision_casco?: number | null;
+      producto?: {
+        id: string;
+        modelo: string;
+        marca: string;
+        requiere_casco?: boolean;
+        comision_casco?: number | null;
+        precio?: number;
+      };
     }>;
   };
+}
+
+export interface EdicionCredito {
+  id: string;
+  credito_venta_id: string;
+  motivo: string;
+  antes: RenglonEditado[];
+  despues: RenglonEditado[];
+  total_anterior: number;
+  total_nuevo: number;
+  created_at: string;
+  usuario: string | null;
+}
+
+export interface RenglonEditado {
+  marca: string | null;
+  modelo: string;
+  cantidad: number;
+  precio_unitario: number;
+  con_casco: boolean | null;
+}
+
+export interface RenglonCreditoInput {
+  producto_id: string;
+  cantidad: number;
+  precio_unitario: number;
+  con_casco?: boolean;
+}
+
+/** Reemplaza las piezas de una venta a crédito por la lista corregida. */
+export function editarVentaCredito(
+  creditoVentaId: string,
+  input: { items: RenglonCreditoInput[]; motivo: string },
+) {
+  return api<{ total_nuevo: number; saldo_pendiente: number }>(
+    `/creditos/ventas/${creditoVentaId}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  );
+}
+
+export interface ReporteCreditosDia {
+  fecha: string;
+  creditos: Array<{
+    id: string;
+    folio: string | null;
+    empresa: string | null;
+    sucursal: string | null;
+    atendio: string | null;
+    folio_vale: string | null;
+    recibido_por: string | null;
+    vehiculo_placas: string | null;
+    total: number;
+    saldo_pendiente: number;
+    estado: string;
+    piezas: number;
+    items: Array<{
+      marca: string | null;
+      modelo: string | null;
+      cantidad: number;
+      precio_unitario: number;
+      con_casco: boolean | null;
+    }>;
+    created_at: string;
+  }>;
+  abonos: Array<{
+    id: string;
+    empresa: string | null;
+    sucursal: string | null;
+    usuario: string | null;
+    monto: number;
+    metodo_pago: string;
+    referencia: string | null;
+    created_at: string;
+  }>;
+  traspasos: Array<{
+    id: string;
+    marca: string | null;
+    modelo: string | null;
+    cantidad: number;
+    origen: string | null;
+    destino: string | null;
+    autorizo: string | null;
+    nota: string | null;
+    created_at: string;
+  }>;
+  totales: {
+    creditos: number;
+    monto_creditos: number;
+    piezas_credito: number;
+    abonos: number;
+    monto_abonos: number;
+    traspasos: number;
+    piezas_traspasadas: number;
+  };
+}
+
+export function obtenerReporteCreditosDia(fecha: string, sucursalId?: string) {
+  const params = new URLSearchParams({ fecha });
+  if (sucursalId) params.set('sucursal_id', sucursalId);
+  return api<ReporteCreditosDia>(`/creditos/reporte-dia?${params.toString()}`);
 }
 
 export interface CreditoAbono {
@@ -507,8 +892,10 @@ export interface CreditoAbono {
 export interface EstadoCuentaEmpresa {
   empresa: EmpresaCredito;
   saldo_deudor: number;
+  baterias_por_modelo?: PiezasDeModelo[];
   ventas: CreditoVenta[];
   abonos: CreditoAbono[];
+  ediciones?: EdicionCredito[];
 }
 
 export interface CrearEmpresaCreditoInput {

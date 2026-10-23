@@ -11,6 +11,8 @@ import {
   type EmpresaCredito,
   type CreditoVenta,
   type EstadoCuentaEmpresa,
+  type PiezasDeModelo,
+  type RenglonEditado,
   listarEmpresasCredito,
   crearEmpresaCredito,
   actualizarEmpresaCredito,
@@ -18,8 +20,12 @@ import {
   listarVentasCredito,
   registrarAbonoCredito,
 } from '@/lib/admin';
-import { formatearDinero } from '@/lib/catalogo';
+import { type Producto, formatearDinero, listarProductos } from '@/lib/catalogo';
+import { EditarCredito } from './EditarCredito';
+import { Modal } from './Modal';
+import { PdfDelDia } from './PdfDelDia';
 import {
+  IconDownload,
   IconBolt,
   IconDashboard,
   IconCatalog,
@@ -85,6 +91,29 @@ export default function CreditosPage() {
   const [notasAbono, setNotasAbono] = useState('');
   const [guardandoAbono, setGuardandoAbono] = useState(false);
   const [errorModalAbono, setErrorModalAbono] = useState<string | null>(null);
+
+  // Corrección de una venta a crédito y PDF del día
+  const [creditoEditando, setCreditoEditando] = useState<CreditoVenta | null>(null);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [pdfDelDia, setPdfDelDia] = useState(false);
+
+  async function abrirCorreccion(credito: CreditoVenta) {
+    setError(null);
+    try {
+      // El catálogo trae las existencias por sucursal; se recarga para validar con lo actual.
+      setProductos(await listarProductos());
+      setCreditoEditando(credito);
+    } catch (e) {
+      setError(mensajeError(e));
+    }
+  }
+
+  async function alGuardarCorreccion() {
+    const empresaAbierta = estadoCuenta?.empresa.id;
+    setCreditoEditando(null);
+    await cargarDatos();
+    if (empresaAbierta) await verEstadoCuenta(empresaAbierta);
+  }
 
   useEffect(() => {
     if (!autenticado) router.replace('/login');
@@ -313,6 +342,10 @@ export default function CreditosPage() {
               <IconRefresh />
               <span>Actualizar</span>
             </button>
+            <button type="button" className={styles.btnSecondary} onClick={() => setPdfDelDia(true)}>
+              <IconDownload />
+              <span>PDF del día</span>
+            </button>
             <button type="button" className={styles.btnPrimary} onClick={() => abrirModalEmpresa()}>
               <IconBuilding />
               <span>+ Nueva Empresa</span>
@@ -395,7 +428,9 @@ export default function CreditosPage() {
             >
               <IconReceipt />
               <span>Ventas (Cuentas por Cobrar)</span>
-              <span className={styles.tabBadge}>{ventasCredito.filter((v) => v.estado !== 'pagado').length}</span>
+              <span className={styles.tabBadge}>
+                {ventasCredito.filter((v) => v.estado !== 'pagado' && v.estado !== 'cancelado').length}
+              </span>
             </button>
           </div>
 
@@ -434,23 +469,24 @@ export default function CreditosPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '18%' }}>Empresa</th>
-                      <th style={{ width: '17%' }}>Contacto & Teléfono</th>
-                      <th style={{ width: '8%' }}>Plazo</th>
-                      <th style={{ width: '13%' }}>Límite</th>
-                      <th style={{ width: '12%', textAlign: 'right' }}>Deuda</th>
-                      <th style={{ width: '10%', textAlign: 'center' }}>Estado</th>
-                      <th style={{ width: '22%', textAlign: 'right' }}>Acciones</th>
+                      <th style={{ width: '16%' }}>Empresa</th>
+                      <th style={{ width: '14%' }}>Contacto & Teléfono</th>
+                      <th style={{ width: '7%' }}>Plazo</th>
+                      <th style={{ width: '10%' }}>Límite</th>
+                      <th style={{ width: '17%' }}>Pilas a crédito</th>
+                      <th style={{ width: '11%', textAlign: 'right' }}>Deuda</th>
+                      <th style={{ width: '8%', textAlign: 'center' }}>Estado</th>
+                      <th style={{ width: '17%', textAlign: 'right' }}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {cargando ? (
                       <tr>
-                        <td colSpan={7} className={styles.emptyText}>Cargando empresas...</td>
+                        <td colSpan={8} className={styles.emptyText}>Cargando empresas...</td>
                       </tr>
                     ) : empresasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className={styles.emptyText}>No hay empresas registradas con crédito.</td>
+                        <td colSpan={8} className={styles.emptyText}>No hay empresas registradas con crédito.</td>
                       </tr>
                     ) : (
                       empresasFiltradas.map((emp) => {
@@ -476,6 +512,12 @@ export default function CreditosPage() {
                             </td>
                             <td className="mono" style={{ fontWeight: 600 }}>
                               {emp.limite_credito > 0 ? formatearDinero(emp.limite_credito) : 'Sin límite'}
+                            </td>
+                            <td>
+                              <PilasACredito
+                                total={emp.total_baterias_debidas ?? 0}
+                                modelos={emp.baterias_por_modelo ?? []}
+                              />
                             </td>
                             <td style={{ textAlign: 'right' }} className="mono">
                               <div
@@ -640,7 +682,9 @@ export default function CreditosPage() {
                                   year: 'numeric',
                                 })}
                               </div>
-                              {item.es_vencida ? (
+                              {item.estado === 'cancelado' ? (
+                                <span className={styles.badgeMuted} style={{ marginTop: 4 }}>Cancelada</span>
+                              ) : item.es_vencida ? (
                                 <span className={styles.badgeDanger} style={{ marginTop: 4 }}>Vencida</span>
                               ) : item.estado === 'pagado' ? (
                                 <span className={styles.badgeSuccess} style={{ marginTop: 4 }}>Pagada</span>
@@ -683,7 +727,20 @@ export default function CreditosPage() {
                               </div>
                             </td>
                             <td style={{ textAlign: 'center' }}>
-                              {item.saldo_pendiente > 0 && item.empresa ? (
+                              {item.estado !== 'cancelado' && (
+                                <button
+                                  type="button"
+                                  className={styles.btnPriceAction}
+                                  style={{ marginBottom: 4 }}
+                                  onClick={() => void abrirCorreccion(item)}
+                                  title="Corregir cantidades o modelos"
+                                >
+                                  Corregir
+                                </button>
+                              )}
+                              {item.estado === 'cancelado' ? (
+                                <span className={styles.badgeMuted}>Cancelada</span>
+                              ) : item.saldo_pendiente > 0 && item.empresa ? (
                                 <button
                                   type="button"
                                   className={styles.btnPriceAction}
@@ -1035,6 +1092,27 @@ export default function CreditosPage() {
             </div>
 
             <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginTop: 8, color: 'var(--text-primary)' }}>
+              Pilas que tiene a crédito
+            </h4>
+            {(estadoCuenta.baterias_por_modelo ?? []).length === 0 ? (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                No tiene pilas en ventas a crédito abiertas.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(estadoCuenta.baterias_por_modelo ?? []).map((m) => (
+                  <span
+                    key={`${m.marca}-${m.modelo}`}
+                    className={styles.badgeInfo}
+                    style={{ fontSize: '12px', padding: '4px 10px' }}
+                  >
+                    <strong>{m.cantidad}</strong>&nbsp;× {[m.marca, m.modelo].filter(Boolean).join(' ')}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginTop: 8, color: 'var(--text-primary)' }}>
               Ventas y Baterías Adeudadas
             </h4>
             <div className={styles.tableScroll}>
@@ -1065,7 +1143,9 @@ export default function CreditosPage() {
                         <td style={{ fontSize: '11px' }}>{new Date(v.created_at).toLocaleDateString('es-MX')}</td>
                         <td>
                           <div style={{ fontWeight: 600 }}>{new Date(v.fecha_vencimiento + 'T12:00:00Z').toLocaleDateString('es-MX')}</div>
-                          {new Date(v.fecha_vencimiento + 'T12:00:00Z') < new Date() && v.estado !== 'pagado' && (
+                          {new Date(v.fecha_vencimiento + 'T12:00:00Z') < new Date() &&
+                            v.estado !== 'pagado' &&
+                            v.estado !== 'cancelado' && (
                             <span className={styles.badgeDanger} style={{ marginTop: 4 }}>
                               Vencida
                             </span>
@@ -1088,16 +1168,38 @@ export default function CreditosPage() {
                           </span>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          {v.saldo_pendiente > 0 && (
-                            <button
-                              type="button"
-                              className={styles.btnPriceAction}
-                              style={{ color: '#16a34a', borderColor: 'rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.05)' }}
-                              onClick={() => abrirModalAbono(estadoCuenta.empresa, v)}
-                            >
-                              Pagar
-                            </button>
-                          )}
+                          <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 4 }}>
+                            {v.estado !== 'cancelado' && (
+                              <button
+                                type="button"
+                                className={styles.btnPriceAction}
+                                onClick={() =>
+                                  void abrirCorreccion({
+                                    ...v,
+                                    empresa: {
+                                      id: estadoCuenta.empresa.id,
+                                      nombre: estadoCuenta.empresa.nombre,
+                                      rfc: estadoCuenta.empresa.rfc,
+                                      telefono: estadoCuenta.empresa.telefono,
+                                      dias_credito: estadoCuenta.empresa.dias_credito,
+                                    },
+                                  })
+                                }
+                              >
+                                Corregir
+                              </button>
+                            )}
+                            {v.saldo_pendiente > 0 && v.estado !== 'cancelado' && (
+                              <button
+                                type="button"
+                                className={styles.btnPriceAction}
+                                style={{ color: '#16a34a', borderColor: 'rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.05)' }}
+                                onClick={() => abrirModalAbono(estadoCuenta.empresa, v)}
+                              >
+                                Pagar
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1105,6 +1207,47 @@ export default function CreditosPage() {
                 </tbody>
               </table>
             </div>
+
+            {(estadoCuenta.ediciones ?? []).length > 0 && (
+              <>
+                <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginTop: 12, color: 'var(--text-primary)' }}>
+                  Correcciones de cantidades o modelos
+                </h4>
+                <div className={styles.tableScroll}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Folio</th>
+                        <th>Antes</th>
+                        <th>Después</th>
+                        <th style={{ textAlign: 'right' }}>Total</th>
+                        <th>Motivo / Quién</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(estadoCuenta.ediciones ?? []).map((ed) => (
+                        <tr key={ed.id}>
+                          <td style={{ fontSize: '11px' }}>{new Date(ed.created_at).toLocaleString('es-MX')}</td>
+                          <td className="mono" style={{ fontSize: '11px' }}>
+                            {estadoCuenta.ventas.find((v) => v.id === ed.credito_venta_id)?.venta?.folio ?? '—'}
+                          </td>
+                          <td style={{ fontSize: '11px' }}>{resumirRenglones(ed.antes)}</td>
+                          <td style={{ fontSize: '11px' }}>{resumirRenglones(ed.despues)}</td>
+                          <td className="mono" style={{ textAlign: 'right', fontSize: '11px' }}>
+                            {formatearDinero(ed.total_anterior)} → {formatearDinero(ed.total_nuevo)}
+                          </td>
+                          <td style={{ fontSize: '11px' }}>
+                            {ed.motivo}
+                            <div style={{ color: 'var(--text-muted)' }}>{ed.usuario ?? '—'}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
 
             <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, marginTop: 12, color: 'var(--text-primary)' }}>
               Historial de Abonos / Pagos
@@ -1176,53 +1319,40 @@ export default function CreditosPage() {
           </div>
         </Modal>
       )}
+
+      {creditoEditando && (
+        <EditarCredito
+          credito={creditoEditando}
+          productos={productos}
+          onCerrar={() => setCreditoEditando(null)}
+          onGuardado={() => void alGuardarCorreccion()}
+        />
+      )}
+
+      {pdfDelDia && <PdfDelDia onCerrar={() => setPdfDelDia(false)} />}
     </div>
   );
 }
 
-// ----------------------------------------------------------------------
-// MODAL BASE COMPONENT (Scroll locked, centered, standard design)
-// ----------------------------------------------------------------------
-function Modal({
-  titulo,
-  icono,
-  onCerrar,
-  children,
-  maxWidth = '580px',
-}: {
-  titulo: ReactNode;
-  icono?: ReactNode;
-  onCerrar: () => void;
-  children: ReactNode;
-  maxWidth?: string;
-}) {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
+function resumirRenglones(renglones: RenglonEditado[]): string {
+  return renglones
+    .map(
+      (r) =>
+        `${r.cantidad}× ${[r.marca, r.modelo].filter(Boolean).join(' ')}${r.con_casco === false ? ' (sin casco)' : ''}`,
+    )
+    .join(', ');
+}
 
+/** Total de pilas a crédito de una empresa y, debajo, cuántas de cada modelo. */
+function PilasACredito({ total, modelos }: { total: number; modelos: PiezasDeModelo[] }) {
+  if (total === 0) {
+    return <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin pilas</span>;
+  }
   return (
-    <div className={styles.overlay} onClick={onCerrar}>
-      <div
-        className={styles.modal}
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth }}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className={styles.modalHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {icono}
-            {typeof titulo === 'string' ? <h3>{titulo}</h3> : titulo}
-          </div>
-          <button type="button" className={styles.closeBtn} onClick={onCerrar} aria-label="Cerrar">
-            <IconClose />
-          </button>
-        </div>
-        {children}
+    <div>
+      <div style={{ fontWeight: 700, color: '#3b82f6' }}>{total} pilas</div>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+        {modelos.map((m) => `${m.cantidad}× ${[m.marca, m.modelo].filter(Boolean).join(' ')}`).join(' · ')}
       </div>
     </div>
   );

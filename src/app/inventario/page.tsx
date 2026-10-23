@@ -36,8 +36,10 @@ import {
   IconSearch,
   IconChevronLeft,
   IconChevronRight,
+  IconDownload,
 } from '@/components/Icons';
 import { Sidebar } from '@/components/Sidebar';
+import { generarExistenciasPdf } from '@/lib/generadorPdf';
 import styles from './inventario.module.css';
 
 interface AjustarState {
@@ -310,6 +312,19 @@ function InventarioAdmin() {
     );
   });
 
+  // PDF para imprimir: modelos con existencia en la sucursal elegida, en orden.
+  function descargarExistencias() {
+    const sucursal = sucursales.find((s) => s.id === sucursalId);
+    if (!sucursal) return;
+    generarExistenciasPdf({
+      sucursalNombre: sucursal.nombre,
+      incluirCascos: false,
+      filas: items
+        .filter((i) => i.sucursal_id === sucursal.id && i.cantidad > 0)
+        .map((i) => ({ marca: i.marca, modelo: i.modelo, cantidad: i.cantidad })),
+    });
+  }
+
   const totalPaginas = Math.ceil(itemsVisibles.length / ITEMS_POR_PAGINA) || 1;
   const indiceInicio = (pagina - 1) * ITEMS_POR_PAGINA;
   const itemsPaginados = itemsVisibles.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
@@ -377,6 +392,21 @@ function InventarioAdmin() {
                 disabled={cargando}
               >
                 Actualizar
+              </button>
+
+              <button
+                className={styles.btnSecondary}
+                onClick={descargarExistencias}
+                disabled={cargando || !sucursalId}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title={
+                  sucursalId
+                    ? 'PDF para imprimir con los modelos y cantidades disponibles en esta sucursal'
+                    : 'Elige una sucursal para imprimir sus existencias'
+                }
+              >
+                <IconDownload style={{ width: '14px', height: '14px' }} />
+                <span>PDF de existencias</span>
               </button>
 
               <button
