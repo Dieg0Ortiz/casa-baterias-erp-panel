@@ -25,6 +25,7 @@ import {
 } from '@/components/Icons';
 import { Sidebar } from '@/components/Sidebar';
 import styles from './sucursales.module.css';
+import LeyendaTicket from './LeyendaTicket';
 
 export default function SucursalesPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function SucursalesPage() {
   const [formDireccion, setFormDireccion] = useState('');
   // Clave de los folios (NV-MAT-000124). Vacía al crear: la base propone una.
   const [formClave, setFormClave] = useState('');
+  const [formLeyenda, setFormLeyenda] = useState('');
 
   useEffect(() => {
     if (!autenticado) router.replace('/login');
@@ -79,6 +81,7 @@ export default function SucursalesPage() {
     setFormEsMatriz(false);
     setFormDireccion('');
     setFormClave('');
+    setFormLeyenda('');
     setModalCrear(true);
   }
 
@@ -87,6 +90,7 @@ export default function SucursalesPage() {
     setFormEsMatriz(s.es_matriz);
     setFormDireccion(s.direccion ?? '');
     setFormClave(s.clave ?? '');
+    setFormLeyenda(s.leyenda_ticket ?? '');
     setModalEditar(s);
   }
 
@@ -113,6 +117,7 @@ export default function SucursalesPage() {
         es_matriz: formEsMatriz,
         direccion: formDireccion.trim() || undefined,
         clave: formClave.trim().toUpperCase() || undefined,
+        leyenda_ticket: formLeyenda.trim() || undefined,
       });
       setModalCrear(false);
       setExito(`Sucursal "${formNombre.trim()}" agregada exitosamente.`);
@@ -145,6 +150,7 @@ export default function SucursalesPage() {
         nombre: formNombre.trim(),
         es_matriz: formEsMatriz,
         direccion: formDireccion.trim(),
+        leyenda_ticket: formLeyenda,
         // Solo si cambió: la base rechaza cambiarla si ya hay folios con ella.
         ...(clave !== modalEditar.clave ? { clave } : {}),
       });
@@ -358,6 +364,11 @@ export default function SucursalesPage() {
                               <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                                 {s.clave ? `Folios: NV-${s.clave}-000001` : `ID: ${s.id.substring(0, 8)}…`}
                               </div>
+                              {s.leyenda_ticket && (
+                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  Imprime garantía en el ticket
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -461,6 +472,8 @@ export default function SucursalesPage() {
                   />
                 </div>
 
+                <LeyendaTicket valor={formLeyenda} onCambio={setFormLeyenda} />
+
                 <label className={styles.checkboxContainer}>
                   <input
                     type="checkbox"
@@ -552,6 +565,8 @@ export default function SucursalesPage() {
                     onChange={(e) => setFormDireccion(e.target.value)}
                   />
                 </div>
+
+                <LeyendaTicket valor={formLeyenda} onCambio={setFormLeyenda} />
 
                 <label className={styles.checkboxContainer}>
                   <input

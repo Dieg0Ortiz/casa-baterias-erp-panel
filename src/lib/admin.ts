@@ -177,6 +177,8 @@ export interface SucursalItem {
   clave?: string;
   es_matriz: boolean;
   direccion?: string | null;
+  /** Texto al pie del ticket del cliente (garantía). Null: no se imprime. */
+  leyenda_ticket?: string | null;
   activo?: boolean;
   empleados_count?: number;
   created_at?: string;
@@ -187,6 +189,7 @@ export interface CrearSucursalInput {
   es_matriz?: boolean;
   direccion?: string;
   clave?: string;
+  leyenda_ticket?: string;
 }
 
 export interface ActualizarSucursalInput {
@@ -194,6 +197,8 @@ export interface ActualizarSucursalInput {
   es_matriz?: boolean;
   direccion?: string;
   clave?: string;
+  /** Vacío la borra. */
+  leyenda_ticket?: string;
 }
 
 export interface CrearUsuarioInput {
