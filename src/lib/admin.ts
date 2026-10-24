@@ -615,7 +615,6 @@ export interface UtilidadReporte {
   totalVentas: number;
   totalCosto: number;
   totalUtilidad: number;
-  items: any[];
 }
 
 export function obtenerReporteUtilidades(fechaInicio?: string, fechaFin?: string) {

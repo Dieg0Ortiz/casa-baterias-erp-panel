@@ -24,13 +24,12 @@ import {
   IconCashRegister,
   IconReceipt,
   IconArrowRight,
-  IconCard,
-  IconCash,
   IconMenu,
   IconClose,
   IconCasco,
   IconUsers,
 } from '@/components/Icons';
+import { BadgeMetodoPago } from '@/components/BadgeMetodoPago';
 import { Sidebar } from '@/components/Sidebar';
 import styles from './home.module.css';
 
@@ -367,19 +366,7 @@ function DashboardAdmin({
                               <td>{v.sucursal ?? '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{v.usuario ?? '—'}</td>
                               <td>
-                                <span className={styles.paymentMethod}>
-                                  {v.metodo_pago === 'tarjeta' ? (
-                                    <>
-                                      <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
-                                      <span>Tarjeta</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
-                                      <span>Efectivo</span>
-                                    </>
-                                  )}
-                                </span>
+                                <BadgeMetodoPago metodo={v.metodo_pago} />
                               </td>
                               <td className="mono" style={{ textAlign: 'right', fontWeight: 600 }}>
                                 {formatearDinero(v.total)}

@@ -62,9 +62,9 @@ import {
   IconReceipt,
   IconBuilding,
   IconSales,
-  IconSplit,
   IconUsers,
 } from '@/components/Icons';
+import { BadgeMetodoPago } from '@/components/BadgeMetodoPago';
 import { Sidebar } from '@/components/Sidebar';
 import styles from './reportes.module.css';
 
@@ -705,64 +705,7 @@ function VentaFila({
     }
   }
 
-  const renderMetodoBadge = () => {
-    switch (metodoPago) {
-      case 'tarjeta_debito':
-        return (
-          <span className={styles.paymentMethod} style={{ color: '#0284c7' }}>
-            <IconCard style={{ width: '13px', height: '13px', color: '#0284c7' }} />
-            <span>T. Débito</span>
-          </span>
-        );
-      case 'tarjeta_credito':
-        return (
-          <span className={styles.paymentMethod} style={{ color: '#9333ea' }}>
-            <IconCard style={{ width: '13px', height: '13px', color: '#9333ea' }} />
-            <span>T. Crédito</span>
-          </span>
-        );
-      case 'transferencia':
-        return (
-          <span className={styles.paymentMethod} style={{ color: '#ea580c' }}>
-            <IconBolt style={{ width: '13px', height: '13px', color: '#ea580c' }} />
-            <span>Transferencia</span>
-          </span>
-        );
-      case 'mixto':
-        return (
-          <span
-            className={styles.paymentMethod}
-            style={{
-              color: '#d97706',
-              fontWeight: 700,
-              background: 'rgba(217, 119, 6, 0.12)',
-              padding: '3px 8px',
-              borderRadius: '6px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <IconSplit style={{ width: '13px', height: '13px', color: '#d97706' }} />
-            <span>Pago Mixto</span>
-          </span>
-        );
-      case 'tarjeta':
-        return (
-          <span className={styles.paymentMethod}>
-            <IconCard style={{ width: '13px', height: '13px', color: 'var(--secondary)' }} />
-            <span>Tarjeta</span>
-          </span>
-        );
-      default:
-        return (
-          <span className={styles.paymentMethod}>
-            <IconCash style={{ width: '13px', height: '13px', color: 'var(--success)' }} />
-            <span>Efectivo</span>
-          </span>
-        );
-    }
-  };
+  const renderMetodoBadge = () => <BadgeMetodoPago metodo={metodoPago} />;
 
   const formatearNombreMetodo = (m: string) => {
     switch (m) {

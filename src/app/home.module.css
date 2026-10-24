@@ -701,14 +701,6 @@
   background: rgba(62, 50, 211, 0.02);
 }
 
-.paymentMethod {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
 /* Estados de Error y Carga */
 .errorBanner {
   background: var(--error-container);
