@@ -402,6 +402,68 @@ export function cancelarVenta(ventaId: string, motivo: string) {
   });
 }
 
+// ----- Autorizaciones a distancia -----
+// La caja pide reimprimir, cancelar o devolver una batería y el
+// administrador aprueba desde aquí. Aprobar ejecuta la acción.
+
+export type TipoSolicitud = 'reimpresion' | 'cancelacion' | 'devolucion_bateria';
+export type EstadoSolicitud = 'pendiente' | 'aprobada' | 'rechazada' | 'retirada';
+
+export interface SolicitudAutorizacion {
+  id: string;
+  tipo: TipoSolicitud;
+  estado: EstadoSolicitud;
+  folio: string;
+  motivo: string;
+  created_at: string;
+  expira_en: string;
+  resuelto_en: string | null;
+  nota_resolucion: string | null;
+  impresa_en: string | null;
+  sucursal: string | null;
+  solicitante: string | null;
+  autorizador: string | null;
+  venta: {
+    total: number;
+    metodo_pago: string;
+    created_at: string;
+    articulos: { cantidad: number; producto: string; precio_unitario: number }[];
+  } | null;
+  devolucion: {
+    metodo: string;
+    cliente_nombre: string | null;
+    total: number;
+    piezas: { cantidad: number; producto: string; monto: number; reingresa_inventario: boolean }[];
+  } | null;
+  resultado: Record<string, unknown> | null;
+}
+
+/** Pendientes: todas las que esperan. Sin estado: las de hoy. */
+export function listarAutorizaciones(estado?: EstadoSolicitud) {
+  const params = new URLSearchParams();
+  if (estado) params.set('estado', estado);
+  const qs = params.toString();
+  return api<SolicitudAutorizacion[]>(`/autorizaciones${qs ? `?${qs}` : ''}`);
+}
+
+export function contarAutorizacionesPendientes() {
+  return api<{ total: number }>('/autorizaciones/pendientes');
+}
+
+export function aprobarAutorizacion(id: string, nota?: string) {
+  return api<SolicitudAutorizacion>(`/autorizaciones/${id}/aprobar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
+export function rechazarAutorizacion(id: string, nota?: string) {
+  return api<SolicitudAutorizacion>(`/autorizaciones/${id}/rechazar`, {
+    method: 'POST',
+    body: JSON.stringify(nota ? { nota } : {}),
+  });
+}
+
 // ----- Devoluciones (folio DEV) -----
 
 export interface DevolucionLista {

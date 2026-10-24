@@ -3,8 +3,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSesion, logout } from '@/lib/auth';
+import { contarAutorizacionesPendientes } from '@/lib/admin';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   IconBolt,
@@ -19,11 +21,13 @@ import {
   IconStore,
   IconLogout,
   IconClose,
+  IconClock,
 } from '@/components/Icons';
 import styles from './Sidebar.module.css';
 
 export type SidebarActiveItem =
   | 'dashboard'
+  | 'autorizaciones'
   | 'inventario'
   | 'catalogo'
   | 'cascos'
@@ -42,6 +46,7 @@ interface SidebarProps {
 export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarProps) {
   const router = useRouter();
   const { perfil } = useSesion();
+  const pendientes = useAutorizacionesPendientes(perfil?.rol === 'administrador');
 
   function salir() {
     logout();
@@ -54,6 +59,7 @@ export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarPr
       titulo: 'Operaciones',
       items: [
         { href: '/', label: 'Resumen', key: 'dashboard', icon: IconDashboard },
+        { href: '/autorizaciones', label: 'Autorizaciones', key: 'autorizaciones', icon: IconClock },
         { href: '/inventario', label: 'Inventario', key: 'inventario', icon: IconInventory },
         { href: '/catalogo', label: 'Catálogo', key: 'catalogo', icon: IconCatalog },
         { href: '/cascos', label: 'Cascos & Trueques', key: 'cascos', icon: IconCasco },
@@ -120,6 +126,11 @@ export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarPr
                   >
                     <IconComp className={styles.navIcon} />
                     <span>{item.label}</span>
+                    {item.key === 'autorizaciones' && pendientes > 0 && (
+                      <span className={styles.navBadge} aria-label={`${pendientes} por autorizar`}>
+                        {pendientes}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -155,4 +166,35 @@ export function Sidebar({ active, menuAbierto = false, onCerrarMenu }: SidebarPr
       </aside>
     </>
   );
+}
+
+/** Avisa en el panel que alguna caja espera autorización. */
+export const EVENTO_AUTORIZACIONES = 'autorizaciones:cambio';
+
+function useAutorizacionesPendientes(activo: boolean): number {
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    if (!activo) return;
+    let vigente = true;
+    const consultar = () => {
+      contarAutorizacionesPendientes()
+        .then((r) => {
+          if (vigente) setTotal(r.total);
+        })
+        .catch(() => {
+          // Sin conexión: el aviso se actualiza en la siguiente vuelta.
+        });
+    };
+    consultar();
+    const intervalo = window.setInterval(consultar, 20_000);
+    window.addEventListener(EVENTO_AUTORIZACIONES, consultar);
+    return () => {
+      vigente = false;
+      window.clearInterval(intervalo);
+      window.removeEventListener(EVENTO_AUTORIZACIONES, consultar);
+    };
+  }, [activo]);
+
+  return activo ? total : 0;
 }
